@@ -1,0 +1,58 @@
+[package]
+name = "rust-actix-web"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+futures = "0.3"
+serde_json = "1.0"
+user-persist = { path = "../user-persist" }
+log = "0.4"
+env_logger = "0.9"
+tracing = "0.1"
+thiserror = "*"
+tracing-actix-web="=0.5.0-beta.11"
+async-trait = "0.1"
+actix-http = "3.0.0-beta.19"
+actix-service = "2.0"
+# TODO: replace with jswonwebtoken
+jwt = "0.16"
+hmac = "0.12"
+sha2 = "0.10"
+chrono = "0.4"
+validator = "0.14"
+
+[dependencies.tracing-subscriber]
+version = "0.3"
+default-features = false
+features = ["json", "env-filter", "std", "ansi", "fmt"]
+
+
+[dependencies.tokio]
+version = "1.16"
+features = ["time"]
+
+[dependencies.actix-web]
+version = "4.0.0-beta.21"
+features = ["openssl"]
+
+[dependencies.serde]
+version = "1.0"
+
+[dependencies.mongodb]
+version = "2.1"
+
+[dependencies.clap]
+version = "3.0"
+features = ["derive"]
+
+[dependencies.uuid]
+version = "0.8"
+features = ["v4"]
+
+[dependencies.openssl]
+version = "0.10"
+features = ["v110"]
+

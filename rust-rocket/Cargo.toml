@@ -1,0 +1,53 @@
+[package]
+name = "rust-rocket"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+user-persist = { path = "../user-persist" }
+tracing = "0.1"
+serde_json = "1.0"
+futures-util = "0.3"
+thiserror = "1.0"
+jwt = "0.16"
+hmac = "0.12"
+sha2 = "0.10"
+chrono = "0.4"
+
+[dependencies.tracing-subscriber]
+version = "0.3"
+default-features = false
+features = ["json", "env-filter", "std", "ansi", "fmt"]
+
+[dependencies.rocket]
+version = "0.5.0-rc.1"
+# version = "0.4.10"
+features = ["json", "tls"]
+
+[dependencies.serde]
+version = "1.0.133"
+
+[dependencies.mongodb]
+version = "2.1.0"
+
+[dependencies.clap]
+version = "3.0.5"
+features = ["derive"]
+
+[dependencies.uuid]
+version = "0.8.2"
+features = ["v4"]
+
+[dependencies.futures]
+version = "0.3.19"
+
+[dependencies.validator]
+version = "0.14"
+features = ["derive"]
+
+
+# [dependencies.rocket_sync_db_pools]
+# version = "0.1.0-rc.1"
+# default-features = false

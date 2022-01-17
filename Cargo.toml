@@ -1,0 +1,9 @@
+[workspace]
+
+members = [
+  "user-persist",
+  "rust-warp",
+  "rust-rocket",
+  "rust-actix-web",
+  "rust-axum",
+]

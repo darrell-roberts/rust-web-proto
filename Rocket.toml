@@ -1,0 +1,7 @@
+[default]
+port = 8443
+log_level = "critical"
+
+[default.tls]
+certs = "/home/droberts/projects/rust-web-proto/certs/certificate.pem"
+key = "/home/droberts/projects/rust-web-proto/certs/key.pem"
