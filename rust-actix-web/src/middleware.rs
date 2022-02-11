@@ -2,19 +2,20 @@ use crate::common::FRAMEWORK_TARGET;
 use crate::types::{AdminAccess, JWTClaims, JWTError, Role, UserAccess};
 use actix_service::{Service, Transform};
 use actix_web::{
-  body::BoxBody, body::MessageBody, dev::Payload, dev::ServiceRequest,
-  dev::ServiceResponse, http::StatusCode, web::HttpResponse, Error,
-  FromRequest, HttpMessage, HttpRequest, ResponseError,
+  body::{BoxBody, MessageBody},
+  dev::{Payload, ServiceRequest, ServiceResponse},
+  http::StatusCode,
+  FromRequest, HttpMessage, HttpRequest, HttpResponse, ResponseError,
 };
 use chrono::{Duration, Utc};
-use futures::future::{ready, Ready};
-use futures::Future;
+use futures::{
+  future::{ready, Ready},
+  Future,
+};
 use hmac::{Hmac, Mac};
 use jwt::{SignWithKey, VerifyWithKey};
 use sha2::Sha256;
-use std::clone::Clone;
-use std::pin::Pin;
-use std::rc::Rc;
+use std::{clone::Clone, pin::Pin, rc::Rc};
 use thiserror::Error;
 use tracing::{event, Level};
 
@@ -42,15 +43,19 @@ impl Default for JwtAuth {
 
 impl<S, B> Transform<S, ServiceRequest> for JwtAuth
 where
-  S: Service<ServiceRequest, Response = ServiceResponse<B>, Error = Error>,
+  S: Service<
+    ServiceRequest,
+    Response = ServiceResponse<B>,
+    Error = actix_web::Error,
+  >,
   B: MessageBody,
   S::Future: 'static,
   B: 'static,
 {
   type Response = ServiceResponse<B>;
-  type Error = Error;
-  type InitError = ();
+  type Error = actix_web::Error;
   type Transform = JwtMiddleware<S>;
+  type InitError = ();
   type Future = Ready<Result<Self::Transform, Self::InitError>>;
 
   fn new_transform(&self, service: S) -> Self::Future {
@@ -63,12 +68,16 @@ where
 
 impl<S, B> Service<ServiceRequest> for JwtMiddleware<S>
 where
-  S: Service<ServiceRequest, Response = ServiceResponse<B>, Error = Error>,
+  S: Service<
+    ServiceRequest,
+    Response = ServiceResponse<B>,
+    Error = actix_web::Error,
+  >,
   S::Future: 'static,
   B: 'static,
 {
   type Response = ServiceResponse<B>;
-  type Error = Error;
+  type Error = actix_web::Error;
   type Future =
     Pin<Box<dyn Future<Output = Result<Self::Response, Self::Error>>>>;
 
@@ -90,7 +99,7 @@ where
           Level::ERROR,
           "JWT parse failed: {e}"
         );
-        return Box::pin(async move { Err(Error::from(e)) });
+        return Box::pin(async move { Err(actix_web::Error::from(e)) });
       }
     }
 

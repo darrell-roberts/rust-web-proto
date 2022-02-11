@@ -1,50 +1,19 @@
 use actix_web::{web, App, HttpServer};
 use clap::Parser;
-use common::USER_MS_TARGET;
-use middleware::{create_test_jwt, JwtAuth};
-use openssl::ssl::{SslAcceptor, SslAcceptorBuilder, SslFiletype, SslMethod};
-use std::path::PathBuf;
-use std::process;
-use std::sync::Arc;
+use rust_actix_web::{
+  common::USER_MS_TARGET,
+  handlers, init_tls,
+  middleware::{create_test_jwt, JwtAuth},
+  types::Role,
+  ProgramArgs,
+};
+use std::{process, sync::Arc};
 use tracing::{event, Level};
 use tracing_actix_web::TracingLogger;
 use tracing_subscriber::EnvFilter;
-use types::Role;
-use user_persist::mongo_persistence::MongoPersistence;
-use user_persist::persistence::UserPersistence;
-use user_persist::{init_mongo_client, MongoArgs};
-
-mod common;
-mod handlers;
-mod middleware;
-mod responders;
-#[cfg(test)]
-mod test;
-mod types;
-// mod extractors;
-
-#[derive(Parser, Debug, Clone)]
-#[clap(about, version, author)]
-struct ProgramArgs {
-  #[clap(flatten)]
-  mongo_opts: MongoArgs,
-  #[clap(long)]
-  server_tls_key_file: PathBuf,
-  #[clap(long)]
-  server_tls_cert_file: PathBuf,
-}
-
-fn init_tls(args: &ProgramArgs) -> SslAcceptorBuilder {
-  let mut builder =
-    SslAcceptor::mozilla_intermediate(SslMethod::tls()).unwrap();
-  builder
-    .set_private_key_file(args.server_tls_key_file.as_path(), SslFiletype::PEM)
-    .unwrap();
-  builder
-    .set_certificate_chain_file(args.server_tls_cert_file.as_path())
-    .unwrap();
-  builder
-}
+use user_persist::{
+  mongo_persistence::MongoPersistence, persistence::UserPersistence,
+};
 
 #[actix_web::main]
 async fn main() -> Result<(), std::io::Error> {
@@ -74,11 +43,11 @@ async fn main() -> Result<(), std::io::Error> {
     create_test_jwt(Role::User).unwrap()
   );
 
-  match init_mongo_client(program_opts.mongo_opts) {
-    Ok(db) => {
+  match MongoPersistence::new(program_opts.mongo_opts).await {
+    Ok(persistence) => {
       HttpServer::new(move || {
         let persist: web::Data<Arc<dyn UserPersistence>> =
-          web::Data::new(Arc::new(MongoPersistence::new(db.clone())));
+          web::Data::new(Arc::new(persistence.clone()));
         App::new()
           .app_data(persist)
           .wrap(JwtAuth::default())

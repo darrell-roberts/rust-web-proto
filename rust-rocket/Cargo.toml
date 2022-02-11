@@ -22,7 +22,7 @@ default-features = false
 features = ["json", "env-filter", "std", "ansi", "fmt"]
 
 [dependencies.rocket]
-version = "0.5.0-rc.1"
+version = "0.5.0-rc.2"
 # version = "0.4.10"
 features = ["json", "tls"]
 
@@ -30,22 +30,22 @@ features = ["json", "tls"]
 version = "1.0.133"
 
 [dependencies.mongodb]
-version = "2.1.0"
+version = "2"
 
 [dependencies.clap]
-version = "3.0.5"
+version = "3"
 features = ["derive"]
 
 [dependencies.uuid]
-version = "0.8.2"
+version = "1"
 features = ["v4"]
 
 [dependencies.futures]
-version = "0.3.19"
+version = "0.3"
 
-[dependencies.validator]
-version = "0.14"
-features = ["derive"]
+# [dependencies.validator]
+# version = "0.15"
+# features = ["derive"]
 
 
 # [dependencies.rocket_sync_db_pools]

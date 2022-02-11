@@ -4,33 +4,51 @@ version = "0.1.0"
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+[[bin]]
+name = "rust-axum"
+
+[lib]
 
 [dependencies]
-axum = "0.4"
 user-persist = { path = "../user-persist" }
-thiserror = "1.0"
-serde = "1.0"
-mongodb = "2.1"
-clap = "3.0"
+thiserror = "1"
+serde = "1"
+mongodb = "2"
 tracing = "0.1"
 http = "0.2"
-serde_json = "1.0"
+http-body = "0.4"
+serde_json = "1"
 async-trait = "0.1"
-jsonwebtoken = "8.0"
-axum-macros = "0.1"
-tower = "0.4"
+jsonwebtoken = "8"
+tower-layer = "0.3"
+chrono = "0.4"
+futures = "0.3"
+sha2 = "0.10"
+base64 = "0.13"
 
-[dependencies.tower-http]
-version = "0.2"
+[dependencies.tower]
+version = "0.4"
 features = ["full"]
 
+[dependencies.hyper]
+version = "0.14"
+features = ["full"]
+
+[dependencies.clap]
+version = "3"
+features = ["derive", "color", "suggestions", "wrap_help"]
+
+[dependencies.axum]
+version = "0.5"
+features = ["headers", "tower-log"]
+
 [dependencies.axum-server]
-version = "0.3"
+version = "0.4"
 features = ["tls-rustls"]
 
-[dependencies.validator]
-version = "0.14"
-features = ["derive"]
+[dependencies.tower-http]
+version = "0.3"
+features = ["full"]
 
 [dependencies.tracing-subscriber]
 version = "0.3"
@@ -38,13 +56,9 @@ default-features = false
 features = ["json", "env-filter", "std", "ansi", "fmt"]
 
 [dependencies.uuid]
-version = "0.8"
+version = "1"
 features = ["v4"]
 
-[dependencies.openssl]
-version = "0.10"
-features = ["v110"]
-
 [dependencies.tokio]
-version = "1.16"
-features = ["time"]
+version = "1"
+features = ["full"]

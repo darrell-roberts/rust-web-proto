@@ -1,18 +1,20 @@
-use crate::fairings::RequestId;
-use crate::types::{
-  AdminAccess, ErrorResponder, JsonValidation, UserAccess, UserKeyReq,
-  USER_MS_TARGET,
+use crate::{
+  fairings::RequestId,
+  types::{
+    AdminAccess, ErrorResponder, JsonValidation, UserAccess, UserKeyReq,
+    USER_MS_TARGET,
+  },
 };
 use mongodb::bson::doc;
-use rocket::response::stream::ByteStream;
-use rocket::serde::json::Json;
-use rocket::State;
+use rocket::{response::stream::ByteStream, serde::json::Json, State};
 use serde_json::Value;
 use std::sync::Arc;
 use tracing::{event, Level};
-use user_persist::mongo_persistence::MongoPersistence;
-use user_persist::persistence::UserPersistence;
-use user_persist::types::{UpdateUser, User, UserSearch};
+use user_persist::{
+  mongo_persistence::MongoPersistence,
+  persistence::UserPersistence,
+  types::{UpdateUser, User, UserSearch},
+};
 
 type JsonUser = Json<User>;
 type HandlerResult<T> = Result<T, ErrorResponder<'static>>;
@@ -98,12 +100,19 @@ pub async fn find_users(
 #[get("/download")]
 pub async fn download(
   db: &State<MongoPersistence>,
+  req_id: RequestId,
   _role: AdminAccess,
 ) -> HandlerResult<ByteStream![Vec<u8>]> {
   let stream = db.download().await?;
   let bstream = ByteStream! {
       for await user in stream {
-        yield serde_json::to_string(&user).unwrap_or_default().into_bytes();
+        match user {
+          Ok(u) => yield serde_json::to_string(&u).unwrap_or_default().into_bytes(),
+          Err(e) => {
+            event!(target: USER_MS_TARGET, Level::ERROR, %req_id, "Failed to stream downloads: {e}");
+            break
+          },
+        }
       }
   };
   Ok(bstream)

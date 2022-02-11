@@ -1,18 +1,16 @@
-use crate::fairings::RequestId;
-use crate::FRAMEWORK_TARGET;
+use crate::{fairings::RequestId, FRAMEWORK_TARGET};
 use chrono::{DateTime, NaiveDateTime, Utc};
 use mongodb::bson::oid::ObjectId;
-use rocket::http::{ContentType, Header, Status};
-use rocket::request::{FromParam, Request};
-use rocket::response::{Responder, Response};
-use rocket::serde::json::serde_json::to_string;
-use rocket::serde::{Deserialize, Serialize};
+use rocket::{
+  http::{ContentType, Header, Status},
+  request::{FromParam, Request},
+  response::{Responder, Response},
+  serde::{json::serde_json::to_string, Deserialize, Serialize},
+};
 use std::io::Cursor;
 use thiserror::Error;
 use tracing::{event, Level};
-use user_persist::persistence::PersistenceError;
-use user_persist::types::UserKey;
-use validator::Validate;
+use user_persist::{persistence::PersistenceError, types::UserKey, Validate};
 
 pub const USER_MS_TARGET: &str = "user-ms";
 
@@ -47,7 +45,7 @@ impl From<PersistenceError> for ErrorResponder<'static> {
   fn from(err: PersistenceError) -> Self {
     ErrorResponder {
       message: err.to_string(),
-      label: "peristence.error",
+      label: "persistence.error",
     }
   }
 }
@@ -84,7 +82,7 @@ pub enum Role {
 /// authorizing requests.
 #[derive(Deserialize, Serialize, Debug)]
 pub struct JWTClaims {
-  /// Subjet. This is the user identifiier.
+  /// Subjet. This is the user identifier.
   pub sub: String,
   // Roles for the subject.
   pub role: Role,
@@ -98,7 +96,7 @@ pub struct JWTClaims {
 #[derive(Debug, Error)]
 pub enum JWTError {
   #[error("No auth header")]
-  NoAutorizationHeader,
+  NoAuthorizationHeader,
   #[error("Invalid JWT length")]
   InvalidJwtLength {
     #[from]

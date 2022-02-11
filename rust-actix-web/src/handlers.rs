@@ -1,11 +1,15 @@
-use crate::common::USER_MS_TARGET;
-use crate::types::{AdminAccess, HandlerError, UserAccess};
+use crate::{
+  common::USER_MS_TARGET,
+  types::{AdminAccess, HandlerError, UserAccess},
+};
 use actix_http::{ResponseBuilder, StatusCode};
 use actix_web::{get, post, put, web, Responder, Result};
 use std::sync::Arc;
 use tracing::{event, Level};
-use user_persist::persistence::UserPersistence;
-use user_persist::types::{UpdateUser, User, UserKey, UserSearch};
+use user_persist::{
+  persistence::UserPersistence,
+  types::{UpdateUser, User, UserKey, UserSearch},
+};
 
 type Persist = web::Data<Arc<dyn UserPersistence>>;
 

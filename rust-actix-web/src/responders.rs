@@ -2,7 +2,6 @@
 // use actix_web::{Error, HttpRequest, HttpResponse, Responder};
 // use futures::future::{ready, Ready};
 
-
 // impl Responder for LocalUser {
 //   type Error = Error;
 //   type Future = Ready<Result<HttpResponse, Error>>;

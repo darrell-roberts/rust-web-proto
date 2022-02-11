@@ -1,7 +1,5 @@
 use crate::common::FRAMEWORK_TARGET;
-use actix_web::body;
-use actix_web::http;
-use actix_web::web;
+use actix_web::{body, http, HttpResponse, ResponseError};
 use chrono::{DateTime, NaiveDateTime, Utc};
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
@@ -11,20 +9,17 @@ use user_persist::persistence::PersistenceError;
 #[derive(Debug, Error)]
 pub enum HandlerError {
   #[error("Persistence error")]
-  PersistenceError {
-    #[from]
-    source: PersistenceError,
-  },
+  PersistenceError(#[from] PersistenceError),
 }
 
-impl actix_web::ResponseError for HandlerError {
+impl ResponseError for HandlerError {
   fn status_code(&self) -> http::StatusCode {
     http::StatusCode::SERVICE_UNAVAILABLE
   }
 
-  fn error_response(&self) -> actix_web::HttpResponse<body::BoxBody> {
+  fn error_response(&self) -> HttpResponse<body::BoxBody> {
     let body = serde_json::to_string(&format!("{}", self)).unwrap_or_default();
-    web::HttpResponse::ServiceUnavailable()
+    HttpResponse::ServiceUnavailable()
       .content_type("application/json")
       .body(body)
   }
@@ -58,24 +53,15 @@ pub enum JWTError {
   #[error("No auth header")]
   NoAutorizationHeader,
   #[error("Invalid JWT length")]
-  InvalidJwtLength {
-    #[from]
-    source: hmac::digest::InvalidLength,
-  },
+  InvalidJwtLength(#[from] hmac::digest::InvalidLength),
   #[error("Verification failed Invalid JWT")]
-  VerificationFailed {
-    #[from]
-    source: jwt::Error,
-  },
+  VerificationFailed(#[from] jwt::Error),
   #[error("Invalid role")]
   InvalidRole,
   #[error("JWT has expired")]
   Expired,
   #[error("Actix web error")]
-  ActixError {
-    #[from]
-    source: actix_web::Error
-  }
+  ActixError(#[from] actix_web::Error),
 }
 
 impl JWTClaims {

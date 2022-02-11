@@ -1,25 +1,27 @@
-use crate::fairings::RequestId;
-use crate::types::{
-  AdminAccess, JWTClaims, JWTError, JsonValidation, Role, UserAccess,
+use crate::{
+  fairings::RequestId,
+  types::{AdminAccess, JWTClaims, JWTError, JsonValidation, Role, UserAccess},
+  FRAMEWORK_TARGET, TEST_JWT_SECRET,
 };
-use crate::{FRAMEWORK_TARGET, TEST_JWT_SECRET};
 use hmac::{Hmac, Mac};
 use jwt::VerifyWithKey;
-use rocket::data::{self, Data, FromData, Limits};
-use rocket::http::Status;
-use rocket::request::{self, local_cache, FromRequest, Request};
+use rocket::{
+  data::{self, Data, FromData, Limits},
+  http::Status,
+  request::{self, local_cache, FromRequest, Request},
+};
 use serde::{Deserialize, Serialize};
 use sha2::Sha256;
 use thiserror::Error;
 use tracing::{event, Level};
-use validator::Validate;
+use user_persist::Validate;
 
 #[derive(Debug, Error)]
 pub enum JsonValidationError {
   #[error("Validation failed")]
   ValidationFailed {
     #[from]
-    source: validator::ValidationErrors,
+    source: user_persist::ValidationErrors,
   },
   #[error("Parsing failed")]
   ParseError {
@@ -157,7 +159,7 @@ fn extract_jwt(req: &'_ Request<'_>) -> Result<JWTClaims, JWTError> {
 
       Ok(claims.check_expired()?)
     }
-    None => Err(JWTError::NoAutorizationHeader),
+    None => Err(JWTError::NoAuthorizationHeader),
   }
 }
 

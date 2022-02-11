@@ -9,12 +9,16 @@ use mongodb::options::{
 use mongodb::Client;
 use std::fmt::{Display, Formatter};
 use std::path::PathBuf;
+use tracing::info;
 
+pub use validator::{Validate, ValidationErrors};
+
+/// Tracing target for persistence.
 pub const PERSISTENCE_TARGET: &str = "persistence";
 
-// Setup mongodb client. This setup uses TLS with cert and ca file and
-// credentials.
-pub fn init_mongo_client(
+/// Setup mongodb client. This setup uses TLS with cert and ca file and
+/// credentials.
+pub async fn init_mongo_client(
   args: MongoArgs,
 ) -> Result<mongodb::Database, mongodb::error::Error> {
   let db_name = &args.mongo_db.clone();
@@ -27,6 +31,8 @@ pub fn init_mongo_client(
     .build();
 
   let tls_options = TlsOptions::builder()
+    // Only for testing self signed certificate. You could setup with openssl and export
+    // SSL_CERT_FILE and then this can be removed.
     .allow_invalid_certificates(Some(true))
     .ca_file_path(Some(args.mongo_ca_file))
     .cert_key_file_path(Some(args.mongo_key_file))
@@ -40,26 +46,34 @@ pub fn init_mongo_client(
     .credential(credentials)
     .build();
 
-  Client::with_options(mongo_options).map(|c| c.database(db_name))
+  info!(target: PERSISTENCE_TARGET, "Connecting to mongodb");
+  let client = Client::with_options(mongo_options)?;
+  let result = client.list_databases(None, None).await?;
+  info!(
+    target: PERSISTENCE_TARGET,
+    "Connected to mongodb: {result:?}"
+  );
+  Ok(client.database(db_name))
 }
 
+/// Command line arguments for mongodb client.
 #[derive(Args, Debug, Clone)]
 #[clap(about, version, author)]
 pub struct MongoArgs {
   #[clap(long)]
-  pub mongo_user: String,
+  mongo_user: String,
   #[clap(long)]
-  pub mongo_pass: String,
+  mongo_pass: String,
   #[clap(long)]
-  pub mongo_db: String,
+  mongo_db: String,
   #[clap(long)]
-  pub mongo_host: ServerAddress,
+  mongo_host: ServerAddress,
   #[clap(long)]
-  pub app_name: String,
+  app_name: String,
   #[clap(long)]
-  pub mongo_ca_file: PathBuf,
+  mongo_ca_file: PathBuf,
   #[clap(long)]
-  pub mongo_key_file: PathBuf,
+  mongo_key_file: PathBuf,
 }
 
 impl Display for MongoArgs {

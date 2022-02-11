@@ -1,29 +1,32 @@
+use crate::USER_MS_TARGET;
 use async_trait::async_trait;
 use axum::{
-  body::{boxed, Full, HttpBody},
+  body::HttpBody,
   extract::{rejection::JsonRejection, FromRequest, Json, RequestParts},
+  http::StatusCode,
   response::{IntoResponse, Response},
   BoxError,
 };
-use http::StatusCode;
-use serde::de::DeserializeOwned;
-use serde::Serialize;
-use serde_json::{json, to_string};
+use serde::{de::DeserializeOwned, Serialize};
+use serde_json::{json, to_value};
 use std::ops::Deref;
 use thiserror::Error;
-use validator::{Validate, ValidationErrors};
+use tracing::error;
+use user_persist::{Validate, ValidationErrors};
 
+/// An extractor that adds value validators to a Json validator.
 #[derive(Debug, Clone, Copy, Default)]
 pub struct ValidatingJson<T: Validate>(pub T);
 
 #[derive(Debug, Error)]
 pub enum JsonValidationError {
-  #[error("Json validation error")]
+  #[error("Json validation error: `{0}`")]
   JsonError(#[from] JsonRejection),
-  #[error("Validation failed")]
+  #[error("Validation failed: `{0}`")]
   JsonValidation(#[from] ValidationErrors),
 }
 
+/// Validation errors for all validations that failed.
 #[derive(Debug, Serialize)]
 struct ValidationErrorResponse {
   validation_errors: ValidationErrors,
@@ -45,38 +48,33 @@ where
   async fn from_request(
     req: &mut RequestParts<B>,
   ) -> Result<Self, Self::Rejection> {
-    let data: Json<T> = Json::from_request(req).await?;
+    let Json(data): Json<T> = Json::from_request(req).await?;
     data.validate()?;
-    Ok(Self(data.0))
+    Ok(Self(data))
   }
 }
 
 impl IntoResponse for JsonValidationError {
   fn into_response(self) -> Response {
+    error!(target: USER_MS_TARGET, "Input failed validation: {self}");
+
     let body = match self {
       Self::JsonError(e) => {
-        let response = json!({
+        json!({
           "label": "json_parse.failed",
           "message": e.to_string()
-        });
-        boxed(Full::from(to_string(&response).unwrap_or_default()))
+        })
       }
       Self::JsonValidation(e) => {
         let validation_response = ValidationErrorResponse {
           validation_errors: e,
           label: "validation.failed".to_owned(),
         };
-        boxed(Full::from(
-          to_string(&validation_response).unwrap_or_default(),
-        ))
+        to_value(&validation_response)
+          .unwrap_or_else(|e| json!({"error": e.to_string()}))
       }
     };
-
-    Response::builder()
-      .status(StatusCode::UNPROCESSABLE_ENTITY)
-      .header("Content-Type", "application/json")
-      .body(body)
-      .unwrap()
+    (StatusCode::BAD_REQUEST, Json(body)).into_response()
   }
 }
 

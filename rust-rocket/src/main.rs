@@ -9,16 +9,18 @@ mod routes;
 mod tests;
 mod types;
 
+use crate::types::{JWTClaims, Role};
+use chrono::{Duration, Utc};
 use clap::Parser;
-use std::fmt;
-use std::process;
-use std::sync::Arc;
+use hmac::{Hmac, Mac};
+use jwt::SignWithKey;
+use sha2::Sha256;
+use std::{fmt, process, sync::Arc};
 use tracing::{event, Level};
 use tracing_subscriber::EnvFilter;
-use user_persist::init_mongo_client;
-use user_persist::mongo_persistence::MongoPersistence;
-use user_persist::persistence::UserPersistence;
-use user_persist::MongoArgs;
+use user_persist::{
+  mongo_persistence::MongoPersistence, persistence::UserPersistence, MongoArgs,
+};
 
 // This would be sourced from some vault service.
 const TEST_JWT_SECRET: &[u8] = b"TEST_SECRET";
@@ -37,6 +39,19 @@ impl fmt::Display for ProgramArgs {
   }
 }
 
+type HmacSha256 = Hmac<Sha256>;
+
+fn test_jwt(role: Role) -> String {
+  let key = HmacSha256::new_from_slice(TEST_JWT_SECRET).unwrap();
+  let expiration = Utc::now() + Duration::minutes(15);
+  let claims = JWTClaims {
+    sub: "somebody".to_owned(),
+    role,
+    exp: expiration.timestamp(),
+  };
+  format!("Bearer {}", claims.sign_with_key(&key).unwrap())
+}
+
 #[rocket::main]
 async fn main() {
   tracing_subscriber::fmt()
@@ -47,25 +62,31 @@ async fn main() {
     // .flatten_event(true)
     .init();
 
-  let mongo_args = ProgramArgs::parse();
+  let program_opts = ProgramArgs::parse();
 
   event!(
     target: types::USER_MS_TARGET,
     Level::INFO,
-    "mongo_args: {mongo_args}"
+    "mongo_args: {program_opts}"
   );
 
-  match init_mongo_client(mongo_args.mongo_opts) {
-    Ok(db) => {
-      let mongo_persist: Arc<dyn UserPersistence> =
-        Arc::new(MongoPersistence::new(db.clone()));
+  event!(
+    target: types::USER_MS_TARGET,
+    Level::DEBUG,
+    "admin {}",
+    test_jwt(Role::Admin)
+  );
 
-      rocket::build()
+  match MongoPersistence::new(program_opts.mongo_opts).await {
+    Ok(db) => {
+      let mongo_persist: Arc<dyn UserPersistence> = Arc::new(db);
+
+      let _ = rocket::build()
         .attach(fairings::RequestIdFairing)
         .attach(fairings::LoggerFairing)
         .attach(fairings::RequestTimer)
         .manage(mongo_persist)
-        .manage(MongoPersistence::new(db))
+        // .manage(mongo)
         .mount(
           "/api/v1/user",
           routes![
@@ -89,11 +110,11 @@ async fn main() {
         )
         .launch()
         .await
-        .unwrap()
+        .unwrap();
     }
     Err(e) => {
-      error!("Failed to connect to database: {}", e);
+      error!("Failed to connect to database: {e}");
       process::exit(1);
     }
-  }
+  };
 }
