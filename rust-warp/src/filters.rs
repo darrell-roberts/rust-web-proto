@@ -1,10 +1,8 @@
-use super::handlers;
-use serde::Serialize;
-use std::convert::Infallible;
-use std::sync::Arc;
-use tracing::{event, info_span, instrument, Level};
-use user_persist::persistence::UserPersistence;
-use user_persist::types::UserKey;
+use crate::handlers;
+use serde_json::json;
+use std::{convert::Infallible, sync::Arc};
+use tracing::{event, info_span, Level};
+use user_persist::{persistence::UserPersistence, types::UserKey};
 use uuid::Uuid;
 use warp::Filter;
 
@@ -12,41 +10,22 @@ const FRAMEWORK_TARGET: &str = "ms-framework";
 
 type UserPersist = Arc<dyn UserPersistence>;
 
+/// Provides the persistence API
 fn with_db(
   db: UserPersist,
-) -> impl Filter<Extract = (UserPersist,), Error = Infallible> + Clone
-{
+) -> impl Filter<Extract = (UserPersist,), Error = Infallible> + Clone {
   warp::any().map(move || db.clone())
-}
-
-#[instrument(name = "request-span", target = "ms-framework")]
-fn with_req_id(
-) -> impl Filter<Extract = (Uuid,), Error = warp::Rejection> + Clone {
-  warp::header::optional::<String>("x-request-id").map(
-    |req_id_header: Option<String>| {
-      let req_id = req_id_header
-        .map(|s| Uuid::parse_str(&s).unwrap_or_else(|_| Uuid::new_v4()));
-
-      req_id.unwrap_or_else(Uuid::new_v4)
-    },
-  )
 }
 
 fn test_wrapper<F, T>(
   filter: F,
-) -> impl Filter<Extract = impl warp::Reply, Error = Infallible> + Clone + Send + Sync // + 'static
+) -> impl Filter<Extract = impl warp::Reply, Error = Infallible> + Clone + Send + Sync
 where
-  F: Filter<Extract = (T,), Error = Infallible>
-    + Clone
-    + Send
-    + Sync,
-    // + 'static,
+  F: Filter<Extract = (T,), Error = Infallible> + Clone + Send + Sync,
   F::Extract: warp::Reply,
-  // T: std::fmt::Debug
 {
   warp::any()
     .map(|| warp::header::optional::<String>("Host"))
-    // .untuple_one()
     .map(|_h| {
       event!(target: FRAMEWORK_TARGET, Level::DEBUG, "Before filter");
     })
@@ -58,17 +37,7 @@ where
     })
 }
 
-// fn add_req_id_header (uuid: Uuid) -> Result<impl warp::Reply, warp::Rejection> {
-//     Ok(warp::reply::with_header(warp::reply::reply, "x-request-id", uuid.to_string()))
-// }
-
-#[derive(Serialize)]
-struct ErrorMessage {
-  label: &'static str,
-  message: String,
-}
-
-#[instrument(skip_all, name = "request-span", target = "user-ms")]
+/// Top level filter for the User API.
 pub fn user(
   db: UserPersist,
 ) -> impl Filter<Extract = impl warp::Reply, Error = Infallible> + Clone {
@@ -86,23 +55,27 @@ pub fn user(
   routes
     .with(warp::filters::compression::gzip())
     .with(warp::trace(|req| {
-      info_span!(target: FRAMEWORK_TARGET, "request-span", method = %req.method(), path = %req.path())
+      let headers = req.request_headers();
+      let req_id = headers.get("x-request-id")
+        .and_then(|v| v.to_str().ok().map(String::from))
+        .unwrap_or_else(|| Uuid::new_v4().to_string());
+      info_span!(target: FRAMEWORK_TARGET, "request-span", %req_id, method = %req.method(), path = %req.path())
     }))
-    .map(|reply| {
-      warp::reply::with_header(reply, "x-request-id", "abc")
-    })
+    // .map(|reply| {
+    //   warp::reply::with_header(reply, "x-request-id", "abc")
+    // })
     .recover(handle_rejection)
     .with(warp::wrap_fn(test_wrapper))
 }
 
 async fn handle_rejection(
-  _err: warp::Rejection,
+  err: warp::Rejection,
 ) -> Result<impl warp::Reply, Infallible> {
-  let error_message = ErrorMessage {
-    label: "blah",
-    message: String::from("hello"),
-  };
-  let json = warp::reply::json(&error_message);
+  let error_body = json!({
+    "label": "error",
+    "message": format!("{err:?}"),
+  });
+  let json = warp::reply::json(&error_body);
   Ok(warp::reply::with_status(
     json,
     warp::http::StatusCode::BAD_REQUEST,
@@ -115,7 +88,6 @@ pub fn get_user(
   warp::path!(UserKey)
     .and(warp::get())
     .and(with_db(db))
-    .and(with_req_id())
     .and_then(handlers::handle_get_user)
 }
 
@@ -126,7 +98,6 @@ pub fn search_users(
     .and(warp::post())
     .and(warp::body::json())
     .and(with_db(db))
-    .and(with_req_id())
     .and_then(handlers::handle_search_users)
 }
 
@@ -144,6 +115,5 @@ pub fn count_genders(
 ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
   warp::path("counts")
     .and(with_db(db))
-    .and(with_req_id())
     .and_then(handlers::handle_count_genders)
 }

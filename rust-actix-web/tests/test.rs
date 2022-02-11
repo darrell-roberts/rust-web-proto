@@ -1,15 +1,19 @@
-use crate::handlers;
-use crate::middleware::{create_test_jwt, JwtAuth};
-use crate::types::Role;
 use actix_http::header::TryIntoHeaderPair;
 use actix_service::Service;
 use actix_web::{body::MessageBody, dev, http, test, web, App};
 use async_trait::async_trait;
+use rust_actix_web::{
+  handlers,
+  middleware::{create_test_jwt, JwtAuth},
+  types::Role,
+};
 use serde_json::{json, Value};
 use std::sync::{Arc, Once};
 use tracing_actix_web::TracingLogger;
 use tracing_subscriber::EnvFilter;
-use user_persist::persistence::{PersistenceError, UserPersistence};
+use user_persist::persistence::{
+  PersistenceError, PersistenceResult, UserPersistence,
+};
 use user_persist::types::{
   Email, Gender, UpdateUser, User, UserKey, UserSearch,
 };
@@ -67,6 +71,10 @@ impl UserPersistence for TestPersistence {
     Ok(())
   }
 
+  async fn remove_user(&self, user: &UserKey) -> PersistenceResult<()> {
+    todo!()
+  }
+
   async fn search_users(
     &self,
     _user_search: &UserSearch,
@@ -88,7 +96,7 @@ impl UserPersistence for TestPersistence {
   }
 }
 
-async fn get_service() -> impl actix_service::Service<
+async fn get_service() -> impl Service<
   actix_http::Request,
   Response = dev::ServiceResponse<impl MessageBody>,
   Error = actix_web::Error,
@@ -191,6 +199,8 @@ async fn update_user() {
       id: UserKey("some_key".to_owned()),
       name: "New name".to_owned(),
       age: 100,
+      email: Email("test@test.com".into()),
+      hid: "xBS6Bfv589WArC5A3psqFZRv/sPe8thJqRHBaipYsho=".into(),
     })
     .to_request();
 

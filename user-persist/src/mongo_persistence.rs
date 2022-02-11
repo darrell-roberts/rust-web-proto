@@ -1,54 +1,67 @@
-use crate::persistence::{UserPersistence, PersistenceResult};
-use crate::types::{Email, Gender, UpdateUser, User, UserKey, UserSearch};
-use crate::PERSISTENCE_TARGET;
-use async_stream::stream;
+/*!
+This module provides data access to a a mongodb user collection.
+*/
+use crate::{
+  init_mongo_client,
+  persistence::{PersistenceResult, UserPersistence},
+  types::{Email, Gender, UpdateUser, User, UserKey, UserSearch},
+  MongoArgs, PERSISTENCE_TARGET,
+};
 use async_trait::async_trait;
-use futures::stream::{Stream, TryStreamExt};
-use mongodb::bson::oid::ObjectId;
-use mongodb::bson::{doc, Bson, Document};
-use mongodb::options::AggregateOptions;
-use mongodb::results::InsertOneResult;
-use mongodb::Database;
+use futures::{
+  stream::{Stream, TryStreamExt},
+  StreamExt,
+};
+use mongodb::{
+  bson::{doc, oid::ObjectId, Bson, Document},
+  error::Result as MongoResult,
+  options::AggregateOptions,
+  results::InsertOneResult,
+  Collection, Database,
+};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use tracing::{event, instrument, Level};
+use std::ops::Deref;
+use tracing::{debug, instrument};
 
 const COLLECTION_NAME: &str = "users";
 
-// An implementation of persistence for MongoDB.
+/// An implementation of UserPersistence for MongoDB.
 #[derive(Debug, Clone)]
-pub struct MongoPersistence {
-  db: Database,
+pub struct MongoPersistence(Database);
+
+impl Deref for MongoPersistence {
+  type Target = Database;
+  fn deref(&self) -> &Self::Target {
+    &self.0
+  }
 }
 
 impl MongoPersistence {
-  pub fn new(db: Database) -> Self {
-    Self { db }
+  /// Creates a new MongoPersistence API.
+  pub async fn new(options: MongoArgs) -> PersistenceResult<Self> {
+    let db = init_mongo_client(options).await?;
+    Ok(Self(db))
   }
 }
 
 #[async_trait]
 impl UserPersistence for MongoPersistence {
   async fn get_user(&self, id: &UserKey) -> PersistenceResult<Option<User>> {
-    let some_user = self
-      .db
-      .collection::<MongoUser>(COLLECTION_NAME)
-      .find_one(doc! {"_id": id}, None)
-      .await?;
-
-    let user = some_user.map(User::from);
+    let user = self
+      .user_collection()
+      .find_one(doc! {"_id": ObjectId::try_from(id)?}, None)
+      .await?
+      .map(User::from);
 
     Ok(user)
   }
 
   async fn save_user(&self, user: &User) -> PersistenceResult<User> {
-    let mongo_user = MongoUser::from(user);
+    let mongo_user = MongoUser::from(user.to_owned());
 
-    let InsertOneResult { inserted_id, .. } = self
-      .db
-      .collection::<MongoUser>(COLLECTION_NAME)
-      .insert_one(mongo_user, None)
-      .await?;
+    let InsertOneResult { inserted_id, .. } =
+      self.user_collection().insert_one(mongo_user, None).await?;
 
     let key = match inserted_id {
       Bson::ObjectId(k) => Some(k),
@@ -56,30 +69,38 @@ impl UserPersistence for MongoPersistence {
     };
 
     Ok(User {
-      id: key.map(|k| k.to_string()),
+      id: key.map(UserKey::from),
       ..user.clone()
     })
   }
 
   async fn update_user(&self, user: &UpdateUser) -> PersistenceResult<()> {
-    let oid = ObjectId::parse_str(&user.id.0)?;
-    let query = doc! {"_id": oid};
-    let update_fields = doc! {"name": user.name.clone(), "age": user.age};
+    let query = doc! {"_id": ObjectId::try_from(&user.id)?};
+    let update_fields =
+      doc! {"name": &user.name, "age": &user.age, "email": &user.email};
     let update = doc! {"$set": update_fields};
 
     let updated = self
-      .db
-      .collection::<MongoUser>(COLLECTION_NAME)
+      .user_collection()
       .update_one(query, update, None)
       .await?;
 
-    event!(
-      target: PERSISTENCE_TARGET,
-      Level::DEBUG,
-      "update result: {:?}",
-      updated
-    );
+    debug!(target: PERSISTENCE_TARGET, "update result: {updated:?}",);
 
+    Ok(())
+  }
+
+  async fn remove_user(&self, key: &UserKey) -> PersistenceResult<()> {
+    let result = self
+      .user_collection()
+      .delete_one(
+        doc! {
+          "_id": ObjectId::try_from(key)?
+        },
+        None,
+      )
+      .await?;
+    debug!(target: PERSISTENCE_TARGET, "delete result: {result:?}");
     Ok(())
   }
 
@@ -96,33 +117,26 @@ impl UserPersistence for MongoPersistence {
     let search = doc! { "email": &user_search.email, "gender": &user_search.gender,
         "name": &user_search.name
     };
-    event!(
-      target: PERSISTENCE_TARGET,
-      Level::DEBUG,
-      "search query: {search}"
-    );
+
     let filtered_null = search
       .into_iter()
       .filter(|(_, value)| value != &Bson::Null)
       .collect::<Document>();
 
-    event!(
+    debug!(
       target: PERSISTENCE_TARGET,
-      Level::DEBUG,
-      "search query: {}",
-      filtered_null
+      "mongo search query: {filtered_null}",
     );
 
     let result = self
-      .db
-      .collection::<MongoUser>(COLLECTION_NAME)
+      .user_collection()
       .find(filtered_null, None)
       .await?
       .try_collect::<Vec<MongoUser>>()
       .await?
       .into_iter()
       .map(User::from)
-      .collect::<Vec<User>>();
+      .collect::<Vec<_>>();
 
     Ok(result)
   }
@@ -133,14 +147,13 @@ impl UserPersistence for MongoPersistence {
     }];
 
     let docs = self
-      .db
       .collection::<Document>(COLLECTION_NAME)
       .aggregate(
         pipeline.into_iter(),
         AggregateOptions::builder().allow_disk_use(true).build(),
       )
       .await?
-      .try_collect::<Vec<Document>>()
+      .try_collect::<Vec<_>>()
       .await?
       .into_iter()
       .map(Bson::from)
@@ -152,35 +165,27 @@ impl UserPersistence for MongoPersistence {
 }
 
 impl MongoPersistence {
+  /// Get the user collection.
+  fn user_collection(&self) -> Collection<MongoUser> {
+    self.collection::<MongoUser>(COLLECTION_NAME)
+  }
 
   /// Extra capabilities outside of the Persistence trait.
-  /// Download all users from the mongo collection.
+  /// Download all users from the mongodb collection.
   pub async fn download(
     &self,
-  ) -> PersistenceResult<impl Stream<Item = MongoUser>> {
-    let mut cursor = self
-      .db
-      .collection::<MongoUser>(COLLECTION_NAME)
-      .find(doc! {}, None)
-      .await?;
-
-    Ok(stream! {
-      loop {
-        match cursor.try_next().await {
-          Ok(Some(doc)) => yield doc,
-          Ok(None) => break,
-          Err(e) => {
-            event!(target: PERSISTENCE_TARGET, Level::ERROR,
-              "Failed while reading from cursor: {e}");
-            break;
-          }
-        }
-      }
-    })
+  ) -> PersistenceResult<impl Stream<Item = MongoResult<User>>> {
+    Ok(
+      self
+        .user_collection()
+        .find(doc! {}, None)
+        .await?
+        .map(|r| r.map(User::from)),
+    )
   }
 }
 
-impl From<UserKey> for mongodb::bson::Bson {
+impl From<UserKey> for Bson {
   fn from(user_key: UserKey) -> Self {
     ObjectId::parse_str(&user_key.0)
       .map(Bson::ObjectId)
@@ -203,6 +208,7 @@ impl From<Email> for Bson {
   }
 }
 
+/// User type as it is saved in mongodb.
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct MongoUser {
   #[serde(skip_serializing)]
@@ -216,7 +222,7 @@ pub struct MongoUser {
 impl From<MongoUser> for User {
   fn from(mongo_user: MongoUser) -> Self {
     User {
-      id: mongo_user._id.map(|oid| oid.to_string()),
+      id: mongo_user._id.as_ref().map(|u| UserKey::from(*u)),
       name: mongo_user.name,
       age: mongo_user.age,
       email: Email(mongo_user.email),
@@ -225,14 +231,21 @@ impl From<MongoUser> for User {
   }
 }
 
-impl From<&User> for MongoUser {
-  fn from(user: &User) -> Self {
+impl From<User> for MongoUser {
+  fn from(user: User) -> Self {
     MongoUser {
       _id: None,
-      name: user.name.clone(),
+      name: user.name,
       age: user.age,
-      email: user.email.0.clone(),
-      gender: user.gender.clone(),
+      email: user.email.0,
+      gender: user.gender,
     }
+  }
+}
+
+impl TryFrom<&UserKey> for ObjectId {
+  type Error = mongodb::bson::oid::Error;
+  fn try_from(user_key: &UserKey) -> Result<Self, Self::Error> {
+    ObjectId::parse_str(&user_key.0)
   }
 }

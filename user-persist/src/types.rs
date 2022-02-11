@@ -1,64 +1,123 @@
+/*!
+User persistence types.
+*/
 use crate::PERSISTENCE_TARGET;
 use lazy_static::lazy_static;
+use mongodb::bson::oid::ObjectId;
 use regex::Regex;
 use serde::{Deserialize, Serialize};
-use tracing::{event, instrument, Level};
+use std::{
+  fmt::{self, Display},
+  ops::Deref,
+};
+use tracing::{event, Level};
 use validator::{Validate, ValidationError};
 
-// Similar to a Sum type.
-#[derive(Clone, Debug, Deserialize, Serialize)]
+/// User Gender
+#[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
 pub enum Gender {
   Male,
   Female,
 }
 
-#[derive(Clone, Debug, Deserialize, Serialize)]
-pub struct Email(pub String);
-
-fn is_valid_email(email: &Email) -> bool {
-  lazy_static! {
-    static ref RE: Regex =
-      Regex::new(r"[a-zA-Z0-9+._-]+@[a-zA-Z-]+\.[a-z]+").unwrap();
+impl Display for Gender {
+  fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+    write!(
+      f,
+      "{}",
+      match self {
+        Gender::Male => "Male",
+        Gender::Female => "Female",
+      }
+    )
   }
-  RE.is_match(&email.0)
 }
 
-#[instrument(target = "persistence")]
+/// Email newtype.
+#[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
+pub struct Email(pub String);
+
+impl Display for Email {
+  fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+    write!(f, "{}", mask_str(self))
+  }
+}
+
+impl Deref for Email {
+  type Target = String;
+  fn deref(&self) -> &Self::Target {
+    &self.0
+  }
+}
+
+impl Email {
+  /// Validate email.
+  fn is_valid(&self) -> bool {
+    lazy_static! {
+      static ref RE: Regex =
+        Regex::new(r"[a-zA-Z0-9+._-]+@[a-zA-Z-]+\.[a-z]+").unwrap();
+    }
+    RE.is_match(self)
+  }
+}
+
+/// Email validator.
 fn validate_email(email: &Email) -> Result<(), ValidationError> {
   event!(
     target: PERSISTENCE_TARGET,
     Level::DEBUG,
-    "validating email {}",
-    email.0
+    "validating email {email}"
   );
-  if is_valid_email(email) {
+  if email.is_valid() {
     Ok(())
   } else {
     Err(ValidationError::new("invalid email"))
   }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+/// User primary key.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Hash)]
 pub struct UserKey(pub String);
 
-pub struct ParseUserKeyError;
+impl Deref for UserKey {
+  type Target = String;
+  fn deref(&self) -> &Self::Target {
+    &self.0
+  }
+}
+
+impl Display for UserKey {
+  fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+    write!(f, "{}", self.0)
+  }
+}
+
+impl From<ObjectId> for UserKey {
+  fn from(oid: ObjectId) -> Self {
+    Self(oid.to_string())
+  }
+}
+
+/// Key error.
+#[derive(Debug)]
+pub struct InvalidKeyError;
 
 impl std::str::FromStr for UserKey {
-  type Err = ParseUserKeyError;
-  fn from_str(s: &str) -> Result<UserKey, ParseUserKeyError> {
+  type Err = InvalidKeyError;
+  fn from_str(s: &str) -> Result<UserKey, InvalidKeyError> {
     if s.is_empty() {
-      Err(ParseUserKeyError)
+      Err(InvalidKeyError)
     } else {
       Ok(UserKey(s.to_string()))
     }
   }
 }
 
-// Similar to a Product type with record syntax.
-#[derive(Clone, Debug, Deserialize, Serialize, Validate)]
+/// User type.
+#[derive(Clone, Debug, Deserialize, Serialize, Validate, PartialEq, Eq)]
 pub struct User {
   #[serde(skip_serializing_if = "Option::is_none")]
-  pub id: Option<String>,
+  pub id: Option<UserKey>,
   pub name: String,
   #[validate(range(min = 100))]
   pub age: u32,
@@ -67,14 +126,42 @@ pub struct User {
   pub gender: Gender,
 }
 
+/// Mask a string value showing only the first and last character and
+/// masking the rest.
+fn mask_str(str: &str) -> String {
+  let head = str.chars().next().unwrap_or_default();
+  let last = str.chars().last().unwrap_or_default();
+  let mask_chars_len = if str.len() > 3 { str.len() - 2 } else { 1 };
+  let mask_chars = "*".repeat(mask_chars_len);
+
+  format!("{}{}{}", head, mask_chars, last)
+}
+
+impl Display for User {
+  fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+    write!(f, "{} {}", mask_str(&self.name), mask_str(&self.email))
+  }
+}
+
+/// Request type to update a user record.
 #[derive(Clone, Debug, Deserialize, Serialize, Validate)]
 pub struct UpdateUser {
   pub id: UserKey,
   pub name: String,
+  #[validate(custom = "validate_email")]
+  pub email: Email,
   #[validate(range(min = 100))]
   pub age: u32,
+  pub hid: String,
 }
 
+impl Display for UpdateUser {
+  fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+    write!(f, "{} {} {}", self.id, mask_str(&self.name), self.age)
+  }
+}
+
+/// Request type for user search.
 #[derive(Clone, Debug, Deserialize, Serialize, Validate)]
 pub struct UserSearch {
   #[validate(custom = "validate_email")]
@@ -84,4 +171,48 @@ pub struct UserSearch {
   pub gender: Option<Gender>,
   #[serde(skip_serializing_if = "Option::is_none")]
   pub name: Option<String>,
+}
+
+impl Display for UserSearch {
+  fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+    write!(
+      f,
+      r#"email = "{}", gender = "{}", name = "{}""#,
+      self.email.as_ref().map(|s| mask_str(s)).unwrap_or_default(),
+      self
+        .gender
+        .as_ref()
+        .map(|g| format!("{g}"))
+        .unwrap_or_default(),
+      self.name.as_ref().map(|s| mask_str(s)).unwrap_or_default()
+    )
+  }
+}
+
+#[cfg(test)]
+mod test {
+  use super::{Email, User};
+  use crate::types::Gender;
+
+  #[test]
+  fn test_deserialize_user() {
+    let json_user = r#"{
+      "name": "Scenario User",
+      "email": "scenario@test.com",
+      "age": 20,
+      "gender": "Female"
+    }"#;
+
+    let user = serde_json::from_str::<User>(json_user).unwrap();
+    assert_eq!(
+      user,
+      User {
+        id: None,
+        name: "Scenario User".into(),
+        email: Email("scenario@test.com".into()),
+        age: 20,
+        gender: Gender::Female
+      }
+    );
+  }
 }

@@ -1,23 +1,26 @@
-use crate::catchers;
-use crate::fairings;
-use crate::routes;
-use crate::types::{JWTClaims, Role};
-use crate::TEST_JWT_SECRET;
+use crate::{
+  catchers, fairings, routes,
+  types::{JWTClaims, Role},
+  TEST_JWT_SECRET,
+};
 use chrono::{Duration, Utc};
 use hmac::{Hmac, Mac};
 use jwt::SignWithKey;
-use rocket::http::{ContentType, Header, Status};
-use rocket::local::blocking::Client;
-use rocket::{Build, Rocket};
+use rocket::{
+  http::{ContentType, Header, Status},
+  local::blocking::Client,
+  Build, Rocket,
+};
 use serde_json::{json, Value};
 use sha2::Sha256;
 use std::sync::{Arc, Once};
 use thiserror::Error;
 use tracing::{event, Level};
 use tracing_subscriber::EnvFilter;
-use user_persist::persistence::{UserPersistence, PersistenceError};
-use user_persist::types::{
-  Email, Gender, UpdateUser, User, UserKey, UserSearch,
+use user_persist::persistence::PersistenceResult;
+use user_persist::{
+  persistence::{PersistenceError, UserPersistence},
+  types::{Email, Gender, UpdateUser, User, UserKey, UserSearch},
 };
 
 const USER_PATH: &str = "/api/v1/user";
@@ -107,6 +110,10 @@ impl UserPersistence for TestPersistence {
     _user: &UpdateUser,
   ) -> Result<(), PersistenceError> {
     Ok(())
+  }
+
+  async fn remove_user(&self, user: &UserKey) -> PersistenceResult<()> {
+    todo!()
   }
 
   async fn search_users(

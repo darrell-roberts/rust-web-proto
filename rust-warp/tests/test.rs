@@ -1,13 +1,21 @@
-use super::filters::{get_user, user};
 use async_trait::async_trait;
-use serde_json::Value;
-use std::sync::{Arc, Once};
+use flate2::read::GzDecoder;
+use rust_warp::filters::user;
+use serde_json::{from_str, json, Value};
+use std::{
+  convert::Infallible,
+  fmt::Debug,
+  io::Read,
+  sync::{Arc, Once},
+};
 use tracing::{event, Level};
 use tracing_subscriber::EnvFilter;
-use user_persist::persistence::{UserPersistence, PersistenceError};
-use user_persist::types::{
-  Email, Gender, UpdateUser, User, UserKey, UserSearch,
+use user_persist::persistence::PersistenceResult;
+use user_persist::{
+  persistence::{PersistenceError, UserPersistence},
+  types::{Email, Gender, UpdateUser, User, UserKey, UserSearch},
 };
+use warp::{hyper::body::Bytes, Filter, Reply};
 
 const TEST_TARGET: &str = "test";
 
@@ -61,6 +69,10 @@ impl UserPersistence for TestPersistence {
     Ok(())
   }
 
+  async fn remove_user(&self, user: &UserKey) -> PersistenceResult<()> {
+    todo!()
+  }
+
   async fn search_users(
     &self,
     _user_search: &UserSearch,
@@ -73,41 +85,55 @@ impl UserPersistence for TestPersistence {
   }
 }
 
-#[tokio::test]
-async fn test_get_user() {
+fn test_user_filter(
+) -> impl Filter<Extract = impl Reply, Error = Infallible> + Clone {
   init_log();
   let test_db = Arc::new(TestPersistence);
-  let filter = user(test_db);
-  let res = warp::test::request()
-    .path("/61c0d1954c6b974ca7000000")
-    .json(&true)
-    .reply(&filter)
-    .await;
+  user(test_db)
+}
 
-  event!(target: TEST_TARGET, Level::DEBUG, "body: {:?}", res.body());
-  assert_eq!(res.status(), 200);
+fn decompress_body(b: Bytes) -> String {
+  let mut decoder = GzDecoder::new(b.as_ref());
+  let mut s = String::new();
+  decoder.read_to_string(&mut s).unwrap();
+  s
+}
+
+#[tokio::test]
+async fn test_get_user() {
+  let filter = test_user_filter();
+  let res = warp::test::request()
+    .path("/api/v1/user/61c0d1954c6b974ca7000000")
+    .reply(&filter)
+    .await
+    .map(decompress_body)
+    .map(|b| from_str::<Value>(&b).unwrap());
+
+  let body = res.body();
+  event!(target: TEST_TARGET, Level::DEBUG, "body: {:?}", body);
+  assert_eq!(res.status(), 200, "status is ok");
   assert_eq!(
-    res.body(),
-    r#"{ "id":null,
-         "name":"Test User",
-          "age":100,
-          "email":"test@test.com",
-          "gender":"Male"
-       }"#
+    res.into_body(),
+    json! ({
+      "name": "Test User",
+      "age":100,
+      "email":"test@test.com",
+      "gender":"Male"
+    })
   )
 }
 
 // Bad bson. Filter won't route to handler.
 #[tokio::test]
 async fn test_get_user_404() {
-  init_log();
-  let test_db = Arc::new(TestPersistence);
-  let filter = get_user(test_db);
+  let filter = test_user_filter();
   let res = warp::test::request()
-    .path("/61c0d1954c6b974ca7000000a")
-    .json(&true)
+    .path("/api/v1/user/abc")
     .reply(&filter)
-    .await;
+    .await
+    .map(decompress_body);
+
+  event!(target: TEST_TARGET, Level::DEBUG, "Body: {:?}", res.body());
 
   assert_eq!(res.status(), 404);
 }
@@ -115,17 +141,14 @@ async fn test_get_user_404() {
 // Good bson. Does not find result.
 #[tokio::test]
 async fn test_get_user_no_user() {
-  init_log();
-  let test_db = Arc::new(TestPersistence);
-  let filter = get_user(test_db);
+  let filter = test_user_filter();
   let res = warp::test::request()
-    .path("/61c0e3c94c6b977028000000")
-    .json(&true)
+    .path("/api/v1/user/61c0e3c94c6b977028000000")
     .reply(&filter)
-    .await;
+    .await
+    .map(decompress_body);
 
-  event!(target: TEST_TARGET, Level::DEBUG, "Bytes: {:?}", res.body());
+  event!(target: TEST_TARGET, Level::DEBUG, "Body: {:?}", res.body());
 
-  assert_eq!(res.status(), 200);
-  assert_eq!(res.body(), "null");
+  assert_eq!(res.status(), 404);
 }

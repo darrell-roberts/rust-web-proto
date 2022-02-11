@@ -1,7 +1,8 @@
-use crate::guards::UserErrorMessage;
-use crate::types::USER_MS_TARGET;
-use rocket::serde::json::{json, Value};
-use rocket::Request;
+use crate::{guards::UserErrorMessage, types::USER_MS_TARGET};
+use rocket::{
+  serde::json::{json, Value},
+  Request,
+};
 use tracing::{event, Level};
 use validator::ValidationErrors;
 
