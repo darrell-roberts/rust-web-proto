@@ -15,7 +15,7 @@ user-persist = { path = "../user-persist" }
 log = "0.4"
 tracing = "0.1"
 thiserror = "*"
-tracing-actix-web="0.5"
+tracing-actix-web="0.6"
 async-trait = "0.1"
 actix-http = "3"
 actix-service = "2"
@@ -24,7 +24,6 @@ jwt = "0.16"
 hmac = "0.12"
 sha2 = "0.10"
 chrono = "0.4"
-validator = "0.15"
 
 [dependencies.tracing-subscriber]
 version = "0.3"
