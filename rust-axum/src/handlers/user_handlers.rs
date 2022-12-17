@@ -54,11 +54,12 @@ pub async fn get_user(
 }
 
 /// Save user handler.
+#[axum_macros::debug_handler]
 pub async fn save_user(
-  ValidatingJson(user): ValidatingJson<User>,
   db: Persist,
   _claims: UserAccess,
   Extension(app_config): AppCfg,
+  ValidatingJson(user): ValidatingJson<User>,
 ) -> impl IntoResponse {
   debug!(target: USER_MS_TARGET, "saving user: {user}");
   db.save_user(&user)
@@ -70,8 +71,8 @@ pub async fn save_user(
 /// Update user handler.
 pub async fn update_user(
   db: Persist,
-  HashedValidatingJson(user): HashedValidatingJson<UpdateUser>,
   _claims: AdminAccess,
+  HashedValidatingJson(user): HashedValidatingJson<UpdateUser>,
 ) -> HandlerResult<StatusCode> {
   debug!(target: USER_MS_TARGET, "updating user with {user}");
   db.update_user(&user)
@@ -82,10 +83,10 @@ pub async fn update_user(
 
 /// Search users handler.
 pub async fn search_users(
-  ValidatingJson(user_search): ValidatingJson<UserSearch>,
   db: Persist,
   claims: AdminAccess,
   Extension(app_config): AppCfg,
+  ValidatingJson(user_search): ValidatingJson<UserSearch>,
 ) -> impl IntoResponse {
   debug!(
     target: USER_MS_TARGET,

@@ -69,7 +69,8 @@ impl JWTClaims {
   /// This is has a max age of 5 minutes.
   pub fn check_expired(self) -> Result<Self, JWTError> {
     let exp = DateTime::<Utc>::from_utc(
-      NaiveDateTime::from_timestamp(self.exp, 0),
+      NaiveDateTime::from_timestamp_opt(self.exp, 0)
+        .ok_or(JWTError::Expired)?,
       Utc,
     );
     let now = Utc::now();

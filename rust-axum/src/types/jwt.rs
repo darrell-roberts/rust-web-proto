@@ -32,7 +32,7 @@ pub struct JWTClaims {
 impl Display for JWTClaims {
   fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
     let expire = DateTime::<Utc>::from_utc(
-      NaiveDateTime::from_timestamp(self.exp, 0),
+      NaiveDateTime::from_timestamp_opt(self.exp, 0).ok_or(fmt::Error)?,
       Utc,
     );
     write!(f, "sub: {}, role: {}, exp: {}", self.sub, self.role, expire)

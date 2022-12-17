@@ -9,11 +9,11 @@ use crate::{
 use async_trait::async_trait;
 use axum::{
   body::HttpBody,
-  extract::{FromRequest, RequestParts},
+  extract::FromRequest,
   response::{IntoResponse, Response},
   BoxError, Json,
 };
-use http::StatusCode;
+use http::{Request, StatusCode};
 use serde::de::DeserializeOwned;
 use serde_json::json;
 use std::sync::Arc;
@@ -50,29 +50,30 @@ impl IntoResponse for HashedValidatingError {
 }
 
 #[async_trait]
-impl<B, T> FromRequest<B> for HashedValidatingJson<T>
+impl<S, B, T> FromRequest<S, B> for HashedValidatingJson<T>
 where
-  T: Validate + HashValidating,
-  B: HttpBody + Send,
+  B: HttpBody + Send + 'static,
   B::Data: Send,
   B::Error: Into<BoxError>,
-  T: Validate + DeserializeOwned,
+  T: Validate + HashValidating + DeserializeOwned,
+  S: Send + Sync,
 {
   type Rejection = HashedValidatingError;
 
   async fn from_request(
-    req: &mut RequestParts<B>,
+    req: Request<B>,
+    state: &S,
   ) -> Result<Self, Self::Rejection> {
-    let ValidatingJson(data): ValidatingJson<T> =
-      ValidatingJson::from_request(req).await?;
-
-    let prefix = req
+    let config = req
       .extensions()
       .get::<Arc<AppConfig>>()
       .expect("No AppConfig. Did you forget to add Extension layer?")
-      .hash_prefix();
+      .clone();
 
-    if data.is_valid(prefix) {
+    let ValidatingJson(data): ValidatingJson<T> =
+      ValidatingJson::from_request(req, state).await?;
+
+    if data.is_valid(config.hash_prefix()) {
       Ok(Self(data))
     } else {
       Err(HashedValidatingError::InvalidHash)
