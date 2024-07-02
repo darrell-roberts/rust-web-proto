@@ -6,10 +6,12 @@ use crate::{
 use hmac::{Hmac, Mac};
 use jwt::VerifyWithKey;
 use rocket::{
-  data::{self, Data, FromData, Limits},
-  http::Status,
-  request::{self, local_cache, FromRequest, Request},
-};
+    Request, 
+    Data, 
+    http::Status,
+    data::{FromData, Limits},
+    request::{self, local_cache, Outcome, FromRequest}
+  };
 use serde::{Deserialize, Serialize};
 use sha2::Sha256;
 use thiserror::Error;
@@ -53,7 +55,7 @@ where
   async fn from_data(
     req: &'r Request<'_>,
     data: Data<'r>,
-  ) -> data::Outcome<'r, Self> {
+  ) -> rocket::data::Outcome<'r, Self> {
     let limit = req.limits().get("json").unwrap_or(Limits::JSON);
     let req_id = req.local_cache(|| RequestId(None));
     let string = match data.open(limit).into_string().await {
@@ -70,7 +72,7 @@ where
           Some(UserErrorMessage("payload limit exceeded".to_owned()))
         });
 
-        return data::Outcome::Failure((
+        return rocket::data::Outcome::Error((
           Status::PayloadTooLarge,
           JsonValidationError::TooLarge,
         ));
@@ -87,7 +89,7 @@ where
 
         req.local_cache(|| Some(UserErrorMessage(e.to_string())));
 
-        return data::Outcome::Failure((
+        return rocket::data::Outcome::Error((
           Status::InternalServerError,
           JsonValidationError::IO { source: e },
         ));
@@ -100,7 +102,7 @@ where
       .map_err(|e| JsonValidationError::ParseError { source: e })
     {
       Ok(t) => match t.validate() {
-        Ok(_) => data::Outcome::Success(JsonValidation(t)),
+        Ok(_) => rocket::data::Outcome::Success(JsonValidation(t)),
         Err(e) => {
           event!(
             target: FRAMEWORK_TARGET,
@@ -112,7 +114,7 @@ where
           );
 
           req.local_cache(|| Some(e.clone()));
-          data::Outcome::Failure((
+          rocket::data::Outcome::Error((
             Status::BadRequest,
             JsonValidationError::ValidationFailed { source: e },
           ))
@@ -129,7 +131,7 @@ where
         );
 
         req.local_cache(|| Some(UserErrorMessage(e.to_string())));
-        data::Outcome::Failure((Status::InternalServerError, e))
+        rocket::data::Outcome::Error((Status::InternalServerError, e))
       }
     }
   }
@@ -172,8 +174,8 @@ impl<'r> FromRequest<'r> for JWTClaims {
     req: &'r Request<'_>,
   ) -> request::Outcome<Self, Self::Error> {
     match extract_jwt(req) {
-      Ok(j) => request::Outcome::Success(j),
-      Err(e) => request::Outcome::Failure((Status::Forbidden, e)),
+      Ok(j) => Outcome::Success(j),
+      Err(e) => Outcome::Error((Status::Forbidden, e)),
     }
   }
 }
@@ -189,7 +191,7 @@ impl<'r> FromRequest<'r> for UserAccess {
     match extract_jwt(req) {
       Ok(j) if j.role == Role::User => request::Outcome::Success(UserAccess(j)),
       Ok(_) => {
-        request::Outcome::Failure((Status::Forbidden, JWTError::InvalidRole))
+        Outcome::Error((Status::Forbidden, JWTError::InvalidRole))
       }
       Err(e) => {
         event!(
@@ -201,7 +203,7 @@ impl<'r> FromRequest<'r> for UserAccess {
           req.uri()
         );
 
-        request::Outcome::Failure((Status::Forbidden, e))
+        rocket::request::Outcome::Error((Status::Forbidden, e))
       }
     }
   }
@@ -220,7 +222,7 @@ impl<'r> FromRequest<'r> for AdminAccess {
         request::Outcome::Success(AdminAccess(j))
       }
       Ok(_) => {
-        request::Outcome::Failure((Status::Forbidden, JWTError::InvalidRole))
+        rocket::request::Outcome::Error((Status::Forbidden, JWTError::InvalidRole))
       }
       Err(e) => {
         event!(
@@ -231,7 +233,7 @@ impl<'r> FromRequest<'r> for AdminAccess {
           req.method(),
           req.uri()
         );
-        request::Outcome::Failure((Status::Forbidden, e))
+        rocket::request::Outcome::Error((Status::Forbidden, e))
       }
     }
   }

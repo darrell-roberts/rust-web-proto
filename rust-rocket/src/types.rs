@@ -1,5 +1,5 @@
 use crate::{fairings::RequestId, FRAMEWORK_TARGET};
-use chrono::{DateTime, NaiveDateTime, Utc};
+use chrono::{DateTime, Utc};
 use mongodb::bson::oid::ObjectId;
 use rocket::{
   http::{ContentType, Header, Status},
@@ -117,10 +117,7 @@ impl JWTClaims {
   /// Method that checks if the JWT has expired.
   /// This is has a max age of 5 minutes.
   pub fn check_expired(self) -> Result<Self, JWTError> {
-    let exp = DateTime::<Utc>::from_utc(
-      NaiveDateTime::from_timestamp(self.exp, 0),
-      Utc,
-    );
+    let exp = DateTime::from_timestamp(self.exp, 0).expect("Invalid timestamp");
     let now = Utc::now();
     let exp_minutes = (exp - now).num_minutes();
 

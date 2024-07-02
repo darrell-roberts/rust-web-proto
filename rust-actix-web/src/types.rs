@@ -1,6 +1,6 @@
 use crate::common::FRAMEWORK_TARGET;
 use actix_web::{body, http, HttpResponse, ResponseError};
-use chrono::{DateTime, NaiveDateTime, Utc};
+use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 use tracing::{event, Level};
@@ -68,11 +68,7 @@ impl JWTClaims {
   /// Method that checks if the JWT has expired.
   /// This is has a max age of 5 minutes.
   pub fn check_expired(self) -> Result<Self, JWTError> {
-    let exp = DateTime::<Utc>::from_utc(
-      NaiveDateTime::from_timestamp_opt(self.exp, 0)
-        .ok_or(JWTError::Expired)?,
-      Utc,
-    );
+    let exp = DateTime::from_timestamp(self.exp, 0).expect("Invalid timestamp");
     let now = Utc::now();
     let exp_minutes = (exp - now).num_minutes();
 
