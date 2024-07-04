@@ -68,7 +68,7 @@ impl JWTClaims {
   /// Method that checks if the JWT has expired.
   /// This is has a max age of 5 minutes.
   pub fn check_expired(self) -> Result<Self, JWTError> {
-    let exp = DateTime::from_timestamp(self.exp, 0).expect("Invalid timestamp");
+    let exp = DateTime::from_timestamp(self.exp, 0).ok_or(JWTError::Expired)?;
     let now = Utc::now();
     let exp_minutes = (exp - now).num_minutes();
 
