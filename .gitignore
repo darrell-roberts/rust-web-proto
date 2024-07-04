@@ -2,3 +2,4 @@ scripts/
 target/
 certs/
 .idea/
+tarpaulin-report.html

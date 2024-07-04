@@ -1,9 +1,9 @@
 [workspace]
-
+resolver = "2"
 members = [
   "user-persist",
   "rust-warp",
-  # "rust-rocket",
+  "rust-rocket",
   "rust-actix-web",
   "rust-axum",
 ]

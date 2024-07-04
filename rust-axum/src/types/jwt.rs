@@ -3,7 +3,7 @@ JWT types and trait implementations.
 */
 use crate::USER_MS_TARGET;
 use axum::response::{IntoResponse, Json, Response};
-use chrono::{DateTime, NaiveDateTime, Utc};
+use chrono::DateTime;
 use http::StatusCode;
 use jsonwebtoken::DecodingKey;
 use serde::{Deserialize, Serialize};
@@ -31,10 +31,7 @@ pub struct JWTClaims {
 
 impl Display for JWTClaims {
   fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-    let expire = DateTime::<Utc>::from_utc(
-      NaiveDateTime::from_timestamp_opt(self.exp, 0).ok_or(fmt::Error)?,
-      Utc,
-    );
+    let expire = DateTime::from_timestamp(self.exp, 0).ok_or(fmt::Error)?;
     write!(f, "sub: {}, role: {}, exp: {}", self.sub, self.role, expire)
   }
 }

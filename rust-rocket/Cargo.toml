@@ -22,8 +22,7 @@ default-features = false
 features = ["json", "env-filter", "std", "ansi", "fmt"]
 
 [dependencies.rocket]
-version = "0.5.0-rc.2"
-# version = "0.4.10"
+version = "0.5.1"
 features = ["json", "tls"]
 
 [dependencies.serde]

@@ -161,6 +161,17 @@ fn test_jwt(role: Role) -> String {
   format!("Bearer {}", claims.sign_with_key(&key).unwrap())
 }
 
+fn test_jwt_expired(role: Role) -> String {
+  let key = HmacSha256::new_from_slice(TEST_JWT_SECRET).unwrap();
+  let expiration = Utc::now() - Duration::minutes(5);
+  let claims = JWTClaims {
+    sub: "somebody".to_owned(),
+    role,
+    exp: expiration.timestamp(),
+  };
+  format!("Bearer {}", claims.sign_with_key(&key).unwrap())
+}
+
 // Call get user with Admin role and valid user.
 #[test]
 fn get_user() -> TestResult<()> {
@@ -187,6 +198,24 @@ fn get_user_invalid_access() -> TestResult<()> {
   let response = client
     .get("/api/v1/user/61c0d1954c6b974ca7000000")
     .header(Header::new("Authorization", test_jwt(Role::User)))
+    .dispatch();
+
+  let status = response.status();
+  let body = response.into_string().unwrap_or_default();
+  event!(target: TEST_TARGET, Level::DEBUG, "response: {body}");
+  assert_eq!(status, Status::Forbidden);
+  Ok(())
+}
+
+// Call get user with User role and valid user but with a jwt that has expired
+#[test]
+fn get_user_invalid_access_expired_claim() -> TestResult<()> {
+  init_log();
+
+  let client = Client::tracked(get_rocket())?;
+  let response = client
+    .get("/api/v1/user/61c0d1954c6b974ca7000000")
+    .header(Header::new("Authorization", test_jwt_expired(Role::User)))
     .dispatch();
 
   let status = response.status();
