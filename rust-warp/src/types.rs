@@ -8,7 +8,7 @@ pub struct WarpPersistenceError(pub String);
 impl Reject for WarpPersistenceError {}
 
 impl From<PersistenceError> for WarpPersistenceError {
-  fn from(err: PersistenceError) -> Self {
-    WarpPersistenceError(err.to_string())
-  }
+    fn from(err: PersistenceError) -> Self {
+        WarpPersistenceError(err.to_string())
+    }
 }
