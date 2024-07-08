@@ -8,41 +8,41 @@ use user_persist::persistence::PersistenceError;
 
 #[derive(Debug, Error)]
 pub enum HandlerError {
-  #[error("Persistence error")]
-  PersistenceError(#[from] PersistenceError),
+    #[error("Persistence error")]
+    PersistenceError(#[from] PersistenceError),
 }
 
 impl ResponseError for HandlerError {
-  fn status_code(&self) -> http::StatusCode {
-    http::StatusCode::SERVICE_UNAVAILABLE
-  }
+    fn status_code(&self) -> http::StatusCode {
+        http::StatusCode::SERVICE_UNAVAILABLE
+    }
 
-  fn error_response(&self) -> HttpResponse<body::BoxBody> {
-    let body = serde_json::to_string(&format!("{}", self)).unwrap_or_default();
-    HttpResponse::ServiceUnavailable()
-      .content_type("application/json")
-      .body(body)
-  }
+    fn error_response(&self) -> HttpResponse<body::BoxBody> {
+        let body = serde_json::to_string(&format!("{}", self)).unwrap_or_default();
+        HttpResponse::ServiceUnavailable()
+            .content_type("application/json")
+            .body(body)
+    }
 }
 
 // Roles via JWT claims
 /// Enumeration of Roles
 #[derive(Deserialize, Serialize, Debug, Eq, PartialEq, Clone, Copy)]
 pub enum Role {
-  Admin,
-  User,
+    Admin,
+    User,
 }
 
 /// Type for claims in the JWT token used for
 /// authorizing requests.
 #[derive(Deserialize, Serialize, Debug, Clone)]
 pub struct JWTClaims {
-  /// Subjet. This is the user identifiier.
-  pub sub: String,
-  // Roles for the subject.
-  pub role: Role,
-  /// Expiration date time in unix epoch.
-  pub exp: i64,
+    /// Subjet. This is the user identifiier.
+    pub sub: String,
+    // Roles for the subject.
+    pub role: Role,
+    /// Expiration date time in unix epoch.
+    pub exp: i64,
 }
 
 /// Error type for all errors that
@@ -50,40 +50,40 @@ pub struct JWTClaims {
 /// validating a JWT.
 #[derive(Debug, Error)]
 pub enum JWTError {
-  #[error("No auth header")]
-  NoAutorizationHeader,
-  #[error("Invalid JWT length")]
-  InvalidJwtLength(#[from] hmac::digest::InvalidLength),
-  #[error("Verification failed Invalid JWT")]
-  VerificationFailed(#[from] jwt::Error),
-  #[error("Invalid role")]
-  InvalidRole,
-  #[error("JWT has expired")]
-  Expired,
-  #[error("Actix web error")]
-  ActixError(#[from] actix_web::Error),
+    #[error("No auth header")]
+    NoAutorizationHeader,
+    #[error("Invalid JWT length")]
+    InvalidJwtLength(#[from] hmac::digest::InvalidLength),
+    #[error("Verification failed Invalid JWT")]
+    VerificationFailed(#[from] jwt::Error),
+    #[error("Invalid role")]
+    InvalidRole,
+    #[error("JWT has expired")]
+    Expired,
+    #[error("Actix web error")]
+    ActixError(#[from] actix_web::Error),
 }
 
 impl JWTClaims {
-  /// Method that checks if the JWT has expired.
-  /// This is has a max age of 5 minutes.
-  pub fn check_expired(self) -> Result<Self, JWTError> {
-    let exp = DateTime::from_timestamp(self.exp, 0).ok_or(JWTError::Expired)?;
-    let now = Utc::now();
-    let exp_minutes = (exp - now).num_minutes();
+    /// Method that checks if the JWT has expired.
+    /// This is has a max age of 5 minutes.
+    pub fn check_expired(self) -> Result<Self, JWTError> {
+        let exp = DateTime::from_timestamp(self.exp, 0).ok_or(JWTError::Expired)?;
+        let now = Utc::now();
+        let exp_minutes = (exp - now).num_minutes();
 
-    event!(
-      target: FRAMEWORK_TARGET,
-      Level::DEBUG,
-      "Jwt expires in: {exp_minutes} minutes"
-    );
+        event!(
+          target: FRAMEWORK_TARGET,
+          Level::DEBUG,
+          "Jwt expires in: {exp_minutes} minutes"
+        );
 
-    if exp_minutes <= 0 {
-      Err(JWTError::Expired)
-    } else {
-      Ok(self)
+        if exp_minutes <= 0 {
+            Err(JWTError::Expired)
+        } else {
+            Ok(self)
+        }
     }
-  }
 }
 
 /// JWT Claims when the role is User

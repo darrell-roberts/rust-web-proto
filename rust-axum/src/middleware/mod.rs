@@ -13,7 +13,7 @@ pub mod request_trace;
 pub struct MakeRequestUuid;
 
 impl MakeRequestId for MakeRequestUuid {
-  fn make_request_id<B>(&mut self, _request: &Request<B>) -> Option<RequestId> {
-    Uuid::new_v4().to_string().parse().map(RequestId::new).ok()
-  }
+    fn make_request_id<B>(&mut self, _request: &Request<B>) -> Option<RequestId> {
+        Uuid::new_v4().to_string().parse().map(RequestId::new).ok()
+    }
 }

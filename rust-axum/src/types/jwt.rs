@@ -9,10 +9,10 @@ use jsonwebtoken::DecodingKey;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use std::{
-  convert::Infallible,
-  fmt::{self, Display, Formatter},
-  ops::Deref,
-  str::FromStr,
+    convert::Infallible,
+    fmt::{self, Display, Formatter},
+    ops::Deref,
+    str::FromStr,
 };
 use thiserror::Error;
 use tracing::{event, Level};
@@ -21,39 +21,39 @@ use tracing::{event, Level};
 /// authorizing requests.
 #[derive(Deserialize, Serialize, Debug)]
 pub struct JWTClaims {
-  /// Subject. This is the user identifier.
-  pub sub: String,
-  // Roles for the subject.
-  pub role: Role,
-  /// Expiration date time in unix epoch.
-  pub exp: i64,
+    /// Subject. This is the user identifier.
+    pub sub: String,
+    // Roles for the subject.
+    pub role: Role,
+    /// Expiration date time in unix epoch.
+    pub exp: i64,
 }
 
 impl Display for JWTClaims {
-  fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-    let expire = DateTime::from_timestamp(self.exp, 0).ok_or(fmt::Error)?;
-    write!(f, "sub: {}, role: {}, exp: {}", self.sub, self.role, expire)
-  }
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        let expire = DateTime::from_timestamp(self.exp, 0).ok_or(fmt::Error)?;
+        write!(f, "sub: {}, role: {}, exp: {}", self.sub, self.role, expire)
+    }
 }
 
 /// Sum Type for Roles
 #[derive(Deserialize, Serialize, Debug, Eq, PartialEq)]
 pub enum Role {
-  Admin,
-  User,
+    Admin,
+    User,
 }
 
 impl Display for Role {
-  fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-    write!(
-      f,
-      "{}",
-      match self {
-        Role::Admin => "Admin",
-        Role::User => "User",
-      }
-    )
-  }
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "{}",
+            match self {
+                Role::Admin => "Admin",
+                Role::User => "User",
+            }
+        )
+    }
 }
 
 /// JWT Claims when the role is User
@@ -65,40 +65,40 @@ pub struct UserAccess(pub JWTClaims);
 pub struct AdminAccess(pub JWTClaims);
 
 impl Display for UserAccess {
-  fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-    write!(f, "{}", self.0)
-  }
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        write!(f, "{}", self.0)
+    }
 }
 
 impl Display for AdminAccess {
-  fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-    write!(f, "{}", self.0)
-  }
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        write!(f, "{}", self.0)
+    }
 }
 
 /// Error type for authorization failures.
 #[derive(Debug, Error)]
 pub enum AuthError {
-  #[error("Missing authorization")]
-  MissingAuth,
-  #[error("Invalid token")]
-  InvalidToken,
-  #[error("Role `{0}` is not permitted access")]
-  RoleNotPermitted(Role),
+    #[error("Missing authorization")]
+    MissingAuth,
+    #[error("Invalid token")]
+    InvalidToken,
+    #[error("Role `{0}` is not permitted access")]
+    RoleNotPermitted(Role),
 }
 
 impl IntoResponse for AuthError {
-  fn into_response(self) -> Response {
-    event!(
-      target: USER_MS_TARGET,
-      Level::ERROR,
-      "Autorization failed: {self}"
-    );
-    let body = Json(json!({
-        "error": "not authorized",
-    }));
-    (StatusCode::FORBIDDEN, body).into_response()
-  }
+    fn into_response(self) -> Response {
+        event!(
+          target: USER_MS_TARGET,
+          Level::ERROR,
+          "Autorization failed: {self}"
+        );
+        let body = Json(json!({
+            "error": "not authorized",
+        }));
+        (StatusCode::FORBIDDEN, body).into_response()
+    }
 }
 
 /// JWT secret key for decoding.
@@ -106,16 +106,16 @@ impl IntoResponse for AuthError {
 pub struct JwtSecretKey(pub DecodingKey);
 
 impl FromStr for JwtSecretKey {
-  type Err = Infallible;
+    type Err = Infallible;
 
-  fn from_str(s: &str) -> Result<Self, Self::Err> {
-    Ok(Self(DecodingKey::from_secret(s.as_bytes())))
-  }
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        Ok(Self(DecodingKey::from_secret(s.as_bytes())))
+    }
 }
 
 impl Deref for JwtSecretKey {
-  type Target = DecodingKey;
-  fn deref(&self) -> &Self::Target {
-    &self.0
-  }
+    type Target = DecodingKey;
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
 }
