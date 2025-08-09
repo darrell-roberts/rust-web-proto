@@ -102,7 +102,6 @@ where
         .await
         .map(|v| HashableVector::new(app_config, v))
         .map_err(HandlerError::from)
-        .into_response()
 }
 
 /// Delete user handler.
