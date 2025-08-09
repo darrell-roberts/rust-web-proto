@@ -5,7 +5,6 @@ use rust_axum::{
     arguments::{test_jwt, AppConfig, ProgramArgs},
     build_app,
     types::jwt::Role,
-    USER_MS_TARGET,
 };
 use std::{error::Error, net::SocketAddr, sync::Arc};
 use tracing::{event, Level};
@@ -27,17 +26,15 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
     // Print out some test JWT's.
     event!(
-      target: USER_MS_TARGET,
-      Level::DEBUG,
-      "test admin jwt: {}",
-      test_jwt(&app_config, Role::Admin)
+        Level::DEBUG,
+        "test admin jwt: {}",
+        test_jwt(&app_config, Role::Admin)
     );
 
     event!(
-      target: USER_MS_TARGET,
-      Level::DEBUG,
-      "test user jwt: {}",
-      test_jwt(&app_config, Role::User)
+        Level::DEBUG,
+        "test user jwt: {}",
+        test_jwt(&app_config, Role::User)
     );
 
     let config = RustlsConfig::from_pem_file(

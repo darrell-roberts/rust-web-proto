@@ -1,7 +1,6 @@
 /*!
 Types for handler functions.
 */
-use crate::USER_MS_TARGET;
 use axum::{
     extract::Extension,
     response::{IntoResponse, Response},
@@ -27,11 +26,7 @@ impl IntoResponse for HandlerError {
     fn into_response(self) -> Response {
         let error_message = format!("{self}");
 
-        event!(
-          target: USER_MS_TARGET,
-          Level::ERROR,
-          "Server error: {error_message}"
-        );
+        event!(Level::ERROR, "Server error: {error_message}");
 
         let body = json!({
           "label": "server.error",
