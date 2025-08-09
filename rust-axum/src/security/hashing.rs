@@ -1,6 +1,4 @@
-/*!
-Provides hashing capabilities for API validation.
-*/
+//! Provides hashing capabilities for API validation.
 use crate::AppConfig;
 use axum::response::{IntoResponse, Json, Response};
 use base64::Engine;

@@ -1,3 +1,4 @@
+//! Add a response log for each response.
 use http::{header::HOST, Request, Response};
 use std::{fmt::Display, time::Duration};
 use tower_http::{
