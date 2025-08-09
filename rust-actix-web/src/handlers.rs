@@ -7,11 +7,11 @@ use actix_web::{get, post, put, web, Responder, Result};
 use std::sync::Arc;
 use tracing::{event, Level};
 use user_persist::{
-    persistence::UserPersistence,
+    persistence::UserPersistenceDynSafe,
     types::{UpdateUser, User, UserKey, UserSearch},
 };
 
-type Persist = web::Data<Arc<dyn UserPersistence>>;
+type Persist = web::Data<Arc<dyn UserPersistenceDynSafe>>;
 
 #[get("{id}")]
 pub async fn get_user(

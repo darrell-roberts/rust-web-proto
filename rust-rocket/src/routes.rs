@@ -9,13 +9,13 @@ use std::sync::Arc;
 use tracing::{event, Level};
 use user_persist::{
     mongo_persistence::MongoPersistence,
-    persistence::UserPersistence,
+    persistence::UserPersistenceDynSafe,
     types::{UpdateUser, User, UserSearch},
 };
 
 type JsonUser = Json<User>;
 type HandlerResult<T> = Result<T, ErrorResponder<'static>>;
-type UserPersist = State<Arc<dyn UserPersistence>>;
+type UserPersist = State<Arc<dyn UserPersistenceDynSafe>>;
 
 // Gets a single user document by primary key.
 #[get("/<id>")]

@@ -17,16 +17,16 @@ use std::sync::{Arc, Once};
 use thiserror::Error;
 use tracing::{event, Level};
 use tracing_subscriber::EnvFilter;
-use user_persist::persistence::PersistenceResult;
+use user_persist::persistence::{PersistenceResult, UserPersistenceDynSafe};
 use user_persist::{
-    persistence::{PersistenceError, UserPersistence},
+    persistence::PersistenceError,
     types::{Email, Gender, UpdateUser, User, UserKey, UserSearch},
 };
 
 const USER_PATH: &str = "/api/v1/user";
 
 fn get_rocket() -> Rocket<Build> {
-    let mongo_pesist: Arc<dyn UserPersistence> = Arc::new(TestPersistence);
+    let mongo_pesist: Arc<dyn UserPersistenceDynSafe> = Arc::new(TestPersistence);
     rocket::build()
         .manage(mongo_pesist)
         .attach(fairings::RequestIdFairing)
@@ -89,7 +89,7 @@ fn test_user() -> User {
 
 // A mock persistence for testing.
 #[async_trait]
-impl UserPersistence for TestPersistence {
+impl UserPersistenceDynSafe for TestPersistence {
     async fn get_user(&self, id: &UserKey) -> Result<Option<User>, PersistenceError> {
         if id.0 == "61c0d1954c6b974ca7000000" {
             Ok(Some(test_user()))

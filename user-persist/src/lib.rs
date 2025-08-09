@@ -1,4 +1,5 @@
 pub mod mongo_persistence;
+pub mod mongo_persistence_dyn_safe;
 pub mod persistence;
 pub mod types;
 

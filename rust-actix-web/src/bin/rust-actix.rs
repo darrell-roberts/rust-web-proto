@@ -11,7 +11,7 @@ use std::{process, sync::Arc};
 use tracing::{event, Level};
 use tracing_actix_web::TracingLogger;
 use tracing_subscriber::EnvFilter;
-use user_persist::{mongo_persistence::MongoPersistence, persistence::UserPersistence};
+use user_persist::{mongo_persistence::MongoPersistence, persistence::UserPersistenceDynSafe};
 
 #[actix_web::main]
 async fn main() -> Result<(), std::io::Error> {
@@ -44,7 +44,7 @@ async fn main() -> Result<(), std::io::Error> {
     match MongoPersistence::new(program_opts.mongo_opts).await {
         Ok(persistence) => {
             HttpServer::new(move || {
-                let persist: web::Data<Arc<dyn UserPersistence>> =
+                let persist: web::Data<Arc<dyn UserPersistenceDynSafe>> =
                     web::Data::new(Arc::new(persistence.clone()));
                 App::new()
                     .app_data(persist)
