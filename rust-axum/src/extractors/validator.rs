@@ -1,3 +1,5 @@
+//! Axum extractor that calls validate on request types that
+//! have validation annotations.
 use axum::{
     body::Body,
     extract::{rejection::JsonRejection, FromRequest, Json},
