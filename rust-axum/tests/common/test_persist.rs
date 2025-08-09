@@ -1,3 +1,4 @@
+//! A mocked User persistence test api.
 use mongodb::bson::oid::ObjectId;
 use serde_json::{json, Value};
 use std::{collections::HashMap, ops::Deref, sync::Arc, sync::RwLock};
@@ -47,28 +48,22 @@ impl Default for TestPersistence {
 // A test implementation of the UserPersistence layer.
 impl UserPersistence for TestPersistence {
     async fn get_user(&self, id: &UserKey) -> Result<Option<User>, PersistenceError> {
-        let m = self.read().unwrap();
-        let user = m.get(id).map(|u| u.to_owned());
+        let guard = self.read().unwrap();
+        let user = guard.get(id).map(|u| u.to_owned());
         Ok(user)
     }
 
     async fn save_user(&self, user: &User) -> Result<User, PersistenceError> {
-        let oid = ObjectId::new().to_string();
         let mut updated_user = user.clone();
-        let user_key = UserKey(oid);
+        let user_key = UserKey(ObjectId::new().to_string());
         updated_user.id = Some(user_key.clone());
-
-        {
-            let mut m = self.write().unwrap();
-            m.insert(user_key, updated_user.clone());
-        }
-
+        self.write().unwrap().insert(user_key, updated_user.clone());
         Ok(updated_user)
     }
 
     async fn update_user(&self, user: &UpdateUser) -> Result<(), PersistenceError> {
-        let mut m = self.write().unwrap();
-        if let Some(old_user) = m.get_mut(&user.id) {
+        let mut guard = self.write().unwrap();
+        if let Some(old_user) = guard.get_mut(&user.id) {
             old_user.name.clone_from(&user.name);
             old_user.age = user.age;
         };

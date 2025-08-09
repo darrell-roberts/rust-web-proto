@@ -13,16 +13,16 @@ use user_persist::MongoArgs;
 #[clap(about, version, author)]
 pub struct ProgramArgs {
     #[clap(flatten)]
-    mongo_opts: MongoArgs,
+    pub mongo_opts: MongoArgs,
     #[clap(long)]
     #[clap(help = "ssl tls key file")]
-    server_tls_key_file: PathBuf,
+    pub server_tls_key_file: PathBuf,
     #[clap(long)]
     #[clap(help = "ssl tls certificate file")]
-    server_tls_cert_file: PathBuf,
+    pub server_tls_cert_file: PathBuf,
     #[clap(long)]
     #[clap(help = "JWT Secret")]
-    jwt_secret: String,
+    pub jwt_secret: String,
 }
 
 impl ProgramArgs {
@@ -49,17 +49,7 @@ pub struct AppConfig {
 
 impl AppConfig {
     /// Create a new application config state.
-    pub fn new(options: &ProgramArgs) -> Self {
-        let secret = options.jwt_secret.as_bytes();
-        Self {
-            jwt_decoding_key: DecodingKey::from_secret(secret),
-            jwt_encoding_key: EncodingKey::from_secret(secret),
-            hash_prefix: "some_secret_prefix".to_owned(),
-        }
-    }
-
-    /// Create a test application config state.
-    pub fn test(secret: &[u8]) -> Self {
+    pub fn new(secret: &[u8]) -> Self {
         Self {
             jwt_decoding_key: DecodingKey::from_secret(secret),
             jwt_encoding_key: EncodingKey::from_secret(secret),

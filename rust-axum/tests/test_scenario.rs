@@ -1,3 +1,4 @@
+//! Test an end to end scenario.
 use axum::{
     body::Body,
     http::{
@@ -16,7 +17,7 @@ mod common;
 
 /// Runs a test scenario. A user is saved/updated/fetched/deleted/fetched.
 #[tokio::test]
-async fn test_scneario() {
+async fn test_scenario() {
     let persist = Arc::new(TestPersistence::new());
 
     let user = create_user(persist.clone()).await;

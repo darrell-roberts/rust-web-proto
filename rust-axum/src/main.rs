@@ -22,7 +22,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
         .init();
 
     let program_opts = ProgramArgs::parse();
-    let app_config = AppConfig::new(&program_opts);
+    let app_config = AppConfig::new(program_opts.jwt_secret.as_bytes());
 
     // Print out some test JWT's.
     event!(

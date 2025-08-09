@@ -35,12 +35,12 @@ pub fn app(persistence: Option<Arc<TestPersistence>>) -> Router {
         Some(p) => p,
         None => Arc::new(TestPersistence::new()),
     };
-    build_app(persist, AppConfig::test(SECRET))
+    build_app(persist, AppConfig::new(SECRET))
 }
 
 /// Add an authorization header token value for given role.
 pub fn add_jwt(role: Role) -> String {
-    format!("Bearer {}", test_jwt(&AppConfig::test(SECRET), role))
+    format!("Bearer {}", test_jwt(&AppConfig::new(SECRET), role))
 }
 
 pub async fn body_as<T>(response: Response<Body>) -> T
