@@ -2,7 +2,6 @@
 use crate::{
     arguments::AppConfig,
     handlers::user_handlers,
-    // middleware::hashing::HashingMiddleware,
     types::jwt::{JWTClaims, Role},
 };
 use axum::{
@@ -11,7 +10,7 @@ use axum::{
     routing::{delete, get, post, put},
     Router,
 };
-use middleware::request_trace::RequestLogger;
+use middleware::{hashing::HashingMiddleware, request_trace::RequestLogger};
 use std::sync::Arc;
 use tower::ServiceBuilder;
 use tower_http::{
@@ -38,17 +37,16 @@ where
     Router::new()
         .route(
             "/user/{id}",
-            get(user_handlers::get_user::<P>), //.layer(HashingMiddleware::hash_user_layer()),
+            get(user_handlers::get_user::<P>).layer(HashingMiddleware::hash_user_layer()),
         )
         .route(
             "/user",
-            post(user_handlers::save_user::<P>), // .layer(HashingMiddleware::hash_user_layer()),
+            post(user_handlers::save_user::<P>).layer(HashingMiddleware::hash_user_layer()),
         )
-        // TODO: hashing middleware to validate hash on update.
         .route("/user", put(user_handlers::update_user::<P>))
         .route(
             "/user/search",
-            post(user_handlers::search_users::<P>), // .layer(HashingMiddleware::hash_users_layer()),
+            post(user_handlers::search_users::<P>).layer(HashingMiddleware::hash_users_layer()),
         )
         .route("/user/counts", get(user_handlers::count_users::<P>))
         .route("/user/download", get(user_handlers::download_users))

@@ -1,12 +1,10 @@
 //! Route handles for the user API.
 use crate::{
     extractors::{hashing::HashedValidatingJson, validator::ValidatingJson},
-    security::hashing::{HashableVector, HashingResponse},
     types::{
         handler::{HandlerError, Persist},
         jwt::{AdminAccess, UserAccess},
     },
-    AppConfig,
 };
 use axum::{
     body::Body,
@@ -16,7 +14,7 @@ use axum::{
 use futures::stream::{self, StreamExt};
 use http::{Response, StatusCode};
 use serde_json::{to_string, Value};
-use std::{fmt::Display, sync::Arc};
+use std::sync::Arc;
 use tracing::debug;
 use user_persist::{
     mongo_persistence::MongoPersistence,
@@ -25,32 +23,27 @@ use user_persist::{
 };
 
 type HandlerResult<T> = Result<T, HandlerError>;
-type AppCfg = Extension<Arc<AppConfig>>;
 
 /// Get user handler.
 pub async fn get_user<P>(
     db: Persist<P>,
     Path(id): Path<UserKey>,
     claims: AdminAccess,
-    Extension(app_config): AppCfg,
-) -> impl IntoResponse
+) -> Result<Json<User>, HandlerError>
 where
     P: UserPersistence,
 {
     debug!("Received id: {id} with claims: {claims}");
 
-    let user = db.get_user(&id).await?;
+    let user = db
+        .get_user(&id)
+        .await
+        .map_err(HandlerError::from)?
+        .ok_or(HandlerError::ResourceNotFound)?;
 
-    debug!("db result: {}", {
-        let s: &dyn std::fmt::Display = match user {
-            Some(ref u) => u,
-            None => &"No User" as &(dyn Display + 'static),
-        };
-        s
-    });
+    debug!("db result: {user}");
 
-    user.map(|u| HashingResponse::new(app_config, u))
-        .ok_or(HandlerError::ResourceNotFound)
+    Ok(Json(user))
 }
 
 /// Save user handler.
@@ -58,17 +51,14 @@ where
 pub async fn save_user<P>(
     db: Persist<P>,
     _claims: UserAccess,
-    Extension(app_config): AppCfg,
     ValidatingJson(user): ValidatingJson<User>,
-) -> impl IntoResponse
+) -> Result<Json<User>, HandlerError>
 where
     P: UserPersistence,
 {
     debug!("saving user: {user}");
-    db.save_user(&user)
-        .await
-        .map_err(HandlerError::from)
-        .map(|u| HashingResponse::new(app_config, u))
+    let user = db.save_user(&user).await.map_err(HandlerError::from)?;
+    Ok(Json(user))
 }
 
 /// Update user handler.
@@ -91,17 +81,17 @@ where
 pub async fn search_users<P>(
     db: Persist<P>,
     claims: AdminAccess,
-    Extension(app_config): AppCfg,
     ValidatingJson(user_search): ValidatingJson<UserSearch>,
-) -> impl IntoResponse
+) -> Result<Json<Vec<User>>, HandlerError>
 where
     P: UserPersistence,
 {
     debug!("Searching for users with {user_search} and claims {claims}");
-    db.search_users(&user_search)
+    let users = db
+        .search_users(&user_search)
         .await
-        .map(|v| HashableVector::new(app_config, v))
-        .map_err(HandlerError::from)
+        .map_err(HandlerError::from)?;
+    Ok(Json(users))
 }
 
 /// Delete user handler.

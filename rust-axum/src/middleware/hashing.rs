@@ -1,14 +1,18 @@
 //! Hashing middleware.
 use crate::{security::hashing::Hashable, AppConfig};
-use axum::{body::Body, http::Request, response::Response};
+use axum::{
+    body::{to_bytes, Body},
+    http::Request,
+    response::{IntoResponse, Response},
+};
 use futures::future::BoxFuture;
+use http::StatusCode;
 use hyper::body::Bytes;
 use std::{
     sync::Arc,
     task::{Context, Poll},
 };
 use tower::Service;
-use tower_http::ServiceExt;
 use tower_layer::{layer_fn, LayerFn};
 use tracing::{debug, error};
 use user_persist::types::User;
@@ -23,7 +27,6 @@ pub fn hash_user(hash_prefix: &str, bytes: Bytes) -> Bytes {
         }
     }
 }
-
 /// Deserialize the response and call its hash method.
 pub fn hash_users(hash_prefix: &str, bytes: Bytes) -> Bytes {
     match serde_json::from_slice(&bytes)
@@ -59,13 +62,6 @@ impl<S> HashingMiddleware<S, HashingFunc> {
             hash_fn: hash_user,
         })
     }
-
-    // pub fn hash_with_fn<F>(f: F) -> LayerFn<fn(S) -> HashingMiddleware<S, F>>
-    // where
-    //   F: FnMut(Bytes, &str) -> Bytes + Clone + 'static + Send,
-    // {
-    //   layer_fn(|inner| HashingMiddleware { inner, hash_fn: f })
-    // }
 }
 
 impl<S, F> Service<Request<Body>> for HashingMiddleware<S, F>
@@ -98,17 +94,19 @@ where
 
         Box::pin(async move {
             let res = inner.call(req).await?;
+            debug!("Hashing response");
 
-            if res.status().is_success() {
-                debug!("Hashing response");
-
-                let response = res
-                    .map(move |body| body.map_response_body(|bytes| hash_f(&hash_prefix, bytes)));
-
-                Ok(response)
-            } else {
-                Ok(res)
+            if !res.status().is_success() {
+                return Ok(res);
             }
+
+            Ok(match to_bytes(res.into_body(), usize::MAX).await {
+                Ok(bytes) => {
+                    let hashed = hash_f(&hash_prefix, bytes);
+                    Body::from(hashed).into_response()
+                }
+                Err(_err) => (StatusCode::INTERNAL_SERVER_ERROR, "Hashing failed").into_response(),
+            })
         })
     }
 }
