@@ -2,16 +2,14 @@ use crate::{
     types::jwt::{AdminAccess, AuthError, JWTClaims, Role, UserAccess},
     AppConfig,
 };
-use async_trait::async_trait;
-use axum::{
-    extract::{FromRequestParts, TypedHeader},
+use axum::{extract::FromRequestParts, http::request::Parts};
+use axum_extra::{
     headers::{authorization::Bearer, Authorization},
-    http::request::Parts,
+    TypedHeader,
 };
 use jsonwebtoken::{decode, Validation};
 use std::sync::Arc;
 
-#[async_trait]
 impl<S> FromRequestParts<S> for JWTClaims
 where
     S: Send + Sync,
@@ -23,7 +21,6 @@ where
     }
 }
 
-#[async_trait]
 /// Extractor that enforces access for an Amdin role.
 impl<S> FromRequestParts<S> for AdminAccess
 where
@@ -39,7 +36,6 @@ where
     }
 }
 
-#[async_trait]
 /// Extractor that enforces access for a User role.
 impl<S> FromRequestParts<S> for UserAccess
 where

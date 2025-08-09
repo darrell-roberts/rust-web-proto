@@ -37,7 +37,7 @@ pub const REQ_ID_HEADER: &str = "x-request-id";
 fn user_routes() -> Router {
     Router::new()
         .route(
-            "/user/:id",
+            "/user/{id}",
             get(user_handlers::get_user), //.layer(HashingMiddleware::hash_user_layer()),
         )
         .route(
@@ -52,7 +52,7 @@ fn user_routes() -> Router {
         )
         .route("/user/counts", get(user_handlers::count_users))
         .route("/user/download", get(user_handlers::download_users))
-        .route("/user/:id", delete(user_handlers::delete_user))
+        .route("/user/{id}", delete(user_handlers::delete_user))
 }
 
 /// Builds the routes and the layered middleware.

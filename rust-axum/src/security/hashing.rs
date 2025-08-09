@@ -3,6 +3,7 @@ Provides hashing capabilities for API validation.
 */
 use crate::AppConfig;
 use axum::response::{IntoResponse, Json, Response};
+use base64::Engine;
 use http::StatusCode;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
@@ -24,11 +25,11 @@ pub trait HashValidating {
 }
 
 /// Create a sha 256 hash of the provided string
-/// and return the hash as a bse64 encoded string.
+/// and return the hash as a base64 encoded string.
 fn hash_value(value: &str) -> String {
     let mut hasher = Sha256::new();
     hasher.update(value);
-    base64::encode(hasher.finalize())
+    base64::engine::general_purpose::URL_SAFE.encode(hasher.finalize())
 }
 
 #[derive(Debug, Serialize, Deserialize)]

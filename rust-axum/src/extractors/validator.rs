@@ -1,11 +1,9 @@
 use crate::USER_MS_TARGET;
-use async_trait::async_trait;
 use axum::{
-    body::HttpBody,
+    body::Body,
     extract::{rejection::JsonRejection, FromRequest, Json},
     http::{Request, StatusCode},
     response::{IntoResponse, Response},
-    BoxError,
 };
 use serde::{de::DeserializeOwned, Serialize};
 use serde_json::{json, to_value};
@@ -33,21 +31,16 @@ struct ValidationErrorResponse {
     label: String,
 }
 
-/// Uses a Json extractor and adds validation
+/// Uses a Json extractor that adds validation
 /// to the extracted type via the Validate trait.
-#[async_trait]
-impl<S, B, T> FromRequest<S, B> for ValidatingJson<T>
+impl<S, T> FromRequest<S> for ValidatingJson<T>
 where
-    B: HttpBody + Send + 'static,
-    B::Data: Send,
-    B::Error: Into<BoxError>,
-
     T: Validate + DeserializeOwned,
     S: Send + Sync,
 {
     type Rejection = JsonValidationError;
 
-    async fn from_request(req: Request<B>, state: &S) -> Result<Self, Self::Rejection> {
+    async fn from_request(req: Request<Body>, state: &S) -> Result<Self, Self::Rejection> {
         let Json(data): Json<T> = Json::from_request(req, state).await?;
         data.validate()?;
         Ok(Self(data))

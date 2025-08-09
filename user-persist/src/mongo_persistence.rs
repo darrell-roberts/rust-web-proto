@@ -14,7 +14,6 @@ use futures::{
 use mongodb::{
     bson::{doc, oid::ObjectId, Bson, Document},
     error::Result as MongoResult,
-    options::AggregateOptions,
     results::InsertOneResult,
     Collection, Database,
 };
@@ -49,7 +48,7 @@ impl UserPersistence for MongoPersistence {
     async fn get_user(&self, id: &UserKey) -> PersistenceResult<Option<User>> {
         let user = self
             .user_collection()
-            .find_one(doc! {"_id": ObjectId::try_from(id)?}, None)
+            .find_one(doc! {"_id": ObjectId::try_from(id)?})
             .await?
             .map(User::from);
 
@@ -60,7 +59,7 @@ impl UserPersistence for MongoPersistence {
         let mongo_user = MongoUser::from(user.to_owned());
 
         let InsertOneResult { inserted_id, .. } =
-            self.user_collection().insert_one(mongo_user, None).await?;
+            self.user_collection().insert_one(mongo_user).await?;
 
         let key = match inserted_id {
             Bson::ObjectId(k) => Some(k),
@@ -78,10 +77,7 @@ impl UserPersistence for MongoPersistence {
         let update_fields = doc! {"name": &user.name, "age": &user.age, "email": &user.email};
         let update = doc! {"$set": update_fields};
 
-        let updated = self
-            .user_collection()
-            .update_one(query, update, None)
-            .await?;
+        let updated = self.user_collection().update_one(query, update).await?;
 
         debug!(target: PERSISTENCE_TARGET, "update result: {updated:?}",);
 
@@ -91,12 +87,9 @@ impl UserPersistence for MongoPersistence {
     async fn remove_user(&self, key: &UserKey) -> PersistenceResult<()> {
         let result = self
             .user_collection()
-            .delete_one(
-                doc! {
-                  "_id": ObjectId::try_from(key)?
-                },
-                None,
-            )
+            .delete_one(doc! {
+              "_id": ObjectId::try_from(key)?
+            })
             .await?;
         debug!(target: PERSISTENCE_TARGET, "delete result: {result:?}");
         Ok(())
@@ -125,7 +118,7 @@ impl UserPersistence for MongoPersistence {
 
         let result = self
             .user_collection()
-            .find(filtered_null, None)
+            .find(filtered_null)
             .await?
             .try_collect::<Vec<MongoUser>>()
             .await?
@@ -143,10 +136,7 @@ impl UserPersistence for MongoPersistence {
 
         let docs = self
             .collection::<Document>(COLLECTION_NAME)
-            .aggregate(
-                pipeline.into_iter(),
-                AggregateOptions::builder().allow_disk_use(true).build(),
-            )
+            .aggregate(pipeline.into_iter())
             .await?
             .try_collect::<Vec<_>>()
             .await?
@@ -170,7 +160,7 @@ impl MongoPersistence {
     pub async fn download(&self) -> PersistenceResult<impl Stream<Item = MongoResult<User>>> {
         Ok(self
             .user_collection()
-            .find(doc! {}, None)
+            .find(doc! {})
             .await?
             .map(|r| r.map(User::from)))
     }

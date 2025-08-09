@@ -120,7 +120,7 @@ pub struct User {
     pub name: String,
     #[validate(range(min = 100))]
     pub age: u32,
-    #[validate(custom = "validate_email")]
+    #[validate(custom(function = "validate_email"))]
     pub email: Email,
     pub gender: Gender,
 }
@@ -133,7 +133,7 @@ fn mask_str(str: &str) -> String {
     let mask_chars_len = if str.len() > 3 { str.len() - 2 } else { 1 };
     let mask_chars = "*".repeat(mask_chars_len);
 
-    format!("{}{}{}", head, mask_chars, last)
+    format!("{head}{mask_chars}{last}")
 }
 
 impl Display for User {
@@ -147,7 +147,7 @@ impl Display for User {
 pub struct UpdateUser {
     pub id: UserKey,
     pub name: String,
-    #[validate(custom = "validate_email")]
+    #[validate(custom(function = "validate_email"))]
     pub email: Email,
     #[validate(range(min = 100))]
     pub age: u32,
@@ -163,7 +163,7 @@ impl Display for UpdateUser {
 /// Request type for user search.
 #[derive(Clone, Debug, Deserialize, Serialize, Validate)]
 pub struct UserSearch {
-    #[validate(custom = "validate_email")]
+    #[validate(custom(function = "validate_email"))]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub email: Option<Email>,
     #[serde(skip_serializing_if = "Option::is_none")]

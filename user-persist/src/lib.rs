@@ -46,7 +46,7 @@ pub async fn init_mongo_client(
 
     info!(target: PERSISTENCE_TARGET, "Connecting to mongodb");
     let client = Client::with_options(mongo_options)?;
-    let result = client.list_databases(None, None).await?;
+    let result = client.list_databases().await?;
     info!(
       target: PERSISTENCE_TARGET,
       "Connected to mongodb: {result:?}"

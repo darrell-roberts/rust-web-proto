@@ -1,18 +1,11 @@
-use axum::{
-    body::{BoxBody, HttpBody},
-    http::Response,
-    Router,
-};
+use axum::{body::Body, http::Response, Router};
 use rust_axum::{
     arguments::{test_jwt, AppConfig},
     build_app,
     types::jwt::Role,
 };
 use serde::Deserialize;
-use std::{
-    fmt::Debug,
-    sync::{Arc, Once},
-};
+use std::sync::{Arc, Once};
 use test_persist::TestPersistence;
 use tracing::debug;
 use tracing_subscriber::EnvFilter;
@@ -50,11 +43,11 @@ pub fn add_jwt(role: Role) -> String {
     format!("Bearer {}", test_jwt(&AppConfig::test(SECRET), role))
 }
 
-pub async fn body_as<T>(response: Response<BoxBody>) -> T
+pub async fn body_as<T>(response: Response<Body>) -> T
 where
     T: for<'de> Deserialize<'de>,
 {
-    hyper::body::to_bytes(response.into_body())
+    axum::body::to_bytes(response.into_body(), usize::MAX)
         .await
         .map(|b| serde_json::from_slice::<T>(&b).unwrap())
         .unwrap()
@@ -62,12 +55,8 @@ where
 
 /// Consume the body and return it as a String.
 #[allow(dead_code)]
-pub async fn body_as_str<T>(response: Response<T>) -> String
-where
-    T: HttpBody,
-    T::Error: Debug,
-{
-    hyper::body::to_bytes(response.into_body())
+pub async fn body_as_str(response: Response<Body>) -> String {
+    axum::body::to_bytes(response.into_body(), usize::MAX)
         .await
         .map(|b| String::from_utf8(b.to_vec()).unwrap())
         .unwrap()
@@ -75,11 +64,7 @@ where
 
 /// Consume and print the body.
 #[allow(dead_code)]
-pub async fn dump_result<T>(response: Response<T>)
-where
-    T: HttpBody,
-    T::Error: Debug,
-{
+pub async fn dump_result(response: Response<Body>) {
     let body = body_as_str(response).await;
     debug!(target: TEST_TARGET, "result: {body}");
 }

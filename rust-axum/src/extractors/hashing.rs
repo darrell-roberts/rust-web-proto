@@ -6,12 +6,11 @@ use crate::{
     security::hashing::HashValidating,
     AppConfig,
 };
-use async_trait::async_trait;
 use axum::{
-    body::HttpBody,
+    body::Body,
     extract::FromRequest,
     response::{IntoResponse, Response},
-    BoxError, Json,
+    Json,
 };
 use http::{Request, StatusCode};
 use serde::de::DeserializeOwned;
@@ -47,18 +46,14 @@ impl IntoResponse for HashedValidatingError {
     }
 }
 
-#[async_trait]
-impl<S, B, T> FromRequest<S, B> for HashedValidatingJson<T>
+impl<S, T> FromRequest<S> for HashedValidatingJson<T>
 where
-    B: HttpBody + Send + 'static,
-    B::Data: Send,
-    B::Error: Into<BoxError>,
     T: Validate + HashValidating + DeserializeOwned,
     S: Send + Sync,
 {
     type Rejection = HashedValidatingError;
 
-    async fn from_request(req: Request<B>, state: &S) -> Result<Self, Self::Rejection> {
+    async fn from_request(req: Request<Body>, state: &S) -> Result<Self, Self::Rejection> {
         let config = req
             .extensions()
             .get::<Arc<AppConfig>>()

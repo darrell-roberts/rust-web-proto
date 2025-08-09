@@ -8,12 +8,12 @@ use crate::{
     AppConfig, USER_MS_TARGET,
 };
 use axum::{
+    body::Body,
     extract::{Extension, Json, Path},
     response::IntoResponse,
 };
 use futures::stream::{self, StreamExt};
 use http::{Response, StatusCode};
-use hyper::Body;
 use serde_json::{to_string, Value};
 use std::sync::Arc;
 use tracing::debug;
@@ -43,7 +43,7 @@ pub async fn get_user(
       target: USER_MS_TARGET,
       "db result: {}",
       match user {
-        Some(ref u) => format!("{}", u),
+        Some(ref u) => format!("{u}"),
         None => "No User".to_owned(),
       }
     );
@@ -148,6 +148,6 @@ pub async fn download_users(
     Ok(Response::builder()
         .status(StatusCode::OK)
         .header("Content-Type", "application/json")
-        .body(Body::wrap_stream(response_stream))
+        .body(Body::from_stream(response_stream))
         .unwrap())
 }

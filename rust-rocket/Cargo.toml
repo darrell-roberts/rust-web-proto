@@ -10,7 +10,7 @@ user-persist = { path = "../user-persist" }
 tracing = "0.1"
 serde_json = "1.0"
 futures-util = "0.3"
-thiserror = "1.0"
+thiserror = "2.0"
 jwt = "0.16"
 hmac = "0.12"
 sha2 = "0.10"
@@ -26,13 +26,13 @@ version = "0.5.1"
 features = ["json", "tls"]
 
 [dependencies.serde]
-version = "1.0.133"
+version = "1"
 
 [dependencies.mongodb]
-version = "2"
+version = "3.2"
 
 [dependencies.clap]
-version = "3"
+version = "4.5"
 features = ["derive"]
 
 [dependencies.uuid]
