@@ -1,6 +1,4 @@
-/*!
-JWT types and trait implementations.
-*/
+//! JWT types and trait implementations.
 use axum::response::{IntoResponse, Json, Response};
 use chrono::DateTime;
 use http::StatusCode;

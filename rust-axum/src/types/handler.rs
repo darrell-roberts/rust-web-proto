@@ -1,6 +1,4 @@
-/*!
-Types for handler functions.
-*/
+//! Types for handler functions.
 use axum::{
     extract::Extension,
     response::{IntoResponse, Response},

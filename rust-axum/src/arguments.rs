@@ -1,6 +1,4 @@
-/*!
-Program arguments and application state.
-*/
+//! Program arguments and application state.
 use crate::{JWTClaims, Role};
 use chrono::{Duration, Utc};
 use clap::Parser;

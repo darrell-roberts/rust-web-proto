@@ -1,7 +1,4 @@
-/*!
-API server middleware.
-*/
-
+//! API server middleware.
 use http::Request;
 use tower_http::request_id::{MakeRequestId, RequestId};
 use uuid::Uuid;

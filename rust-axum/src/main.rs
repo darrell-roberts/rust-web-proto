@@ -1,3 +1,4 @@
+//! Command line interface for starting the User REST API server.
 use axum::extract::Extension;
 use axum_server::tls_rustls::RustlsConfig;
 use clap::Parser;
