@@ -6,7 +6,7 @@ use crate::{
         handler::{HandlerError, Persist},
         jwt::{AdminAccess, UserAccess},
     },
-    AppConfig, USER_MS_TARGET,
+    AppConfig,
 };
 use axum::{
     body::Body,
@@ -16,7 +16,7 @@ use axum::{
 use futures::stream::{self, StreamExt};
 use http::{Response, StatusCode};
 use serde_json::{to_string, Value};
-use std::sync::Arc;
+use std::{fmt::Display, sync::Arc};
 use tracing::debug;
 use user_persist::{
     mongo_persistence::MongoPersistence,
@@ -37,21 +37,17 @@ pub async fn get_user<P>(
 where
     P: UserPersistence,
 {
-    debug!(
-      target: USER_MS_TARGET,
-      "Received id: {id} with claims: {claims}"
-    );
+    debug!("Received id: {id} with claims: {claims}");
 
     let user = db.get_user(&id).await?;
 
-    debug!(
-      target: USER_MS_TARGET,
-      "db result: {}",
-      match user {
-        Some(ref u) => format!("{u}"),
-        None => "No User".to_owned(),
-      }
-    );
+    debug!("db result: {}", {
+        let s: &dyn std::fmt::Display = match user {
+            Some(ref u) => u,
+            None => &"No User" as &(dyn Display + 'static),
+        };
+        s
+    });
 
     user.map(|u| HashingResponse::new(app_config, u))
         .ok_or(HandlerError::ResourceNotFound)
@@ -68,7 +64,7 @@ pub async fn save_user<P>(
 where
     P: UserPersistence,
 {
-    debug!(target: USER_MS_TARGET, "saving user: {user}");
+    debug!("saving user: {user}");
     db.save_user(&user)
         .await
         .map_err(HandlerError::from)
@@ -84,7 +80,7 @@ pub async fn update_user<P>(
 where
     P: UserPersistence,
 {
-    debug!(target: USER_MS_TARGET, "updating user with {user}");
+    debug!("updating user with {user}");
     db.update_user(&user)
         .await
         .map(|_| StatusCode::OK)
@@ -101,15 +97,11 @@ pub async fn search_users<P>(
 where
     P: UserPersistence,
 {
-    debug!(
-      target: USER_MS_TARGET,
-      "Searching for users with {user_search} and claims {claims}"
-    );
+    debug!("Searching for users with {user_search} and claims {claims}");
     db.search_users(&user_search)
         .await
         .map(|v| HashableVector::new(app_config, v))
         .map_err(HandlerError::from)
-        .into_response()
 }
 
 /// Delete user handler.
@@ -132,9 +124,9 @@ pub async fn count_users<P>(db: Persist<P>, claims: AdminAccess) -> HandlerResul
 where
     P: UserPersistence,
 {
-    debug!(target: USER_MS_TARGET, "Claims: {claims}");
+    debug!("Claims: {claims}");
     let counts = db.count_genders().await?;
-    debug!(target: USER_MS_TARGET, "User counts: {counts:?}");
+    debug!("User counts: {counts:?}");
     Ok(Json(counts))
 }
 
@@ -149,7 +141,7 @@ pub async fn download_users(
     db: Extension<Arc<MongoPersistence>>,
     claims: AdminAccess,
 ) -> HandlerResult<impl IntoResponse> {
-    debug!(target: USER_MS_TARGET, "Streaming users for {claims}");
+    debug!("Streaming users for {claims}");
 
     // Chain my stream with a header and footer
     // in order to reconstitute a json array for
@@ -163,11 +155,9 @@ pub async fn download_users(
         .filter_map(|r| async { r.ok() })
         .map(|u| to_string(&u).map(|s| format!("{s},")));
 
-    let response_stream = header.chain(stream).chain(footer);
-
     Ok(Response::builder()
         .status(StatusCode::OK)
         .header("Content-Type", "application/json")
-        .body(Body::from_stream(response_stream))
+        .body(Body::from_stream(header.chain(stream).chain(footer)))
         .unwrap())
 }

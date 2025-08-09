@@ -1,4 +1,3 @@
-use crate::USER_MS_TARGET;
 use http::{header::HOST, Request, Response};
 use std::{fmt::Display, time::Duration};
 use tower_http::{
@@ -26,7 +25,7 @@ impl<B> MakeSpan<B> for RequestLogger {
             .unwrap_or_else(|| "Unknown host");
 
         tracing::info_span!(
-          USER_MS_TARGET,
+          "request_span",
           "requestId" = req_id,
           "uri" = request.uri().path(),
           "method" = request.method().as_str(),

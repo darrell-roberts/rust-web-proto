@@ -1,4 +1,5 @@
-use crate::USER_MS_TARGET;
+//! Axum extractor that calls validate on request types that
+//! have validation annotations.
 use axum::{
     body::Body,
     extract::{rejection::JsonRejection, FromRequest, Json},
@@ -49,7 +50,7 @@ where
 
 impl IntoResponse for JsonValidationError {
     fn into_response(self) -> Response {
-        error!(target: USER_MS_TARGET, "Input failed validation: {self}");
+        error!("Input failed validation: {self}");
 
         let body = match self {
             Self::JsonError(e) => {

@@ -1,3 +1,8 @@
+//! Request extractors.
+//!
+//! Access control has two roles, admin and user. Depending on the role validated from the
+//! JWT claims the appropriate AdminAccess or UserAccess type will be created and used
+//! to restrict access to a given route.
 use crate::{
     types::jwt::{AdminAccess, AuthError, JWTClaims, Role, UserAccess},
     AppConfig,
@@ -21,7 +26,7 @@ where
     }
 }
 
-/// Extractor that enforces access for an Amdin role.
+/// Extractor that enforces access for an Admin role.
 impl<S> FromRequestParts<S> for AdminAccess
 where
     S: Send + Sync,

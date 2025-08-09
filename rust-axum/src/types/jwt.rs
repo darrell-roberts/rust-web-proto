@@ -1,7 +1,6 @@
 /*!
 JWT types and trait implementations.
 */
-use crate::USER_MS_TARGET;
 use axum::response::{IntoResponse, Json, Response};
 use chrono::DateTime;
 use http::StatusCode;
@@ -89,11 +88,7 @@ pub enum AuthError {
 
 impl IntoResponse for AuthError {
     fn into_response(self) -> Response {
-        event!(
-          target: USER_MS_TARGET,
-          Level::ERROR,
-          "Autorization failed: {self}"
-        );
+        event!(Level::ERROR, "Authorization failed: {self}");
         let body = Json(json!({
             "error": "not authorized",
         }));

@@ -27,10 +27,6 @@ mod middleware;
 pub mod security;
 pub mod types;
 
-/// Tracing target for user-ms.
-pub const USER_MS_TARGET: &str = "user-ms";
-/// Tracing target for framework-ms.
-pub const FRAMEWORK_TARGET: &str = "framework-ms";
 /// Header name for correlation request identifier.
 pub const REQ_ID_HEADER: &str = "x-request-id";
 
