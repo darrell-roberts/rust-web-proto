@@ -155,11 +155,9 @@ pub async fn download_users(
         .filter_map(|r| async { r.ok() })
         .map(|u| to_string(&u).map(|s| format!("{s},")));
 
-    let response_stream = header.chain(stream).chain(footer);
-
     Ok(Response::builder()
         .status(StatusCode::OK)
         .header("Content-Type", "application/json")
-        .body(Body::from_stream(response_stream))
+        .body(Body::from_stream(header.chain(stream).chain(footer)))
         .unwrap())
 }
