@@ -1,3 +1,4 @@
+//! Route handles for the user API.
 use crate::{
     extractors::{hashing::HashedValidatingJson, validator::ValidatingJson},
     security::hashing::{HashableVector, HashingResponse},

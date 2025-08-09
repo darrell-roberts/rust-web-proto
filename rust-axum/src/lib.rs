@@ -1,3 +1,4 @@
+//! Creates a User REST API backend.
 use crate::{
     arguments::AppConfig,
     handlers::user_handlers,
