@@ -2,6 +2,7 @@
 Generic UserPersistence Trait and types.
 */
 use crate::types::{UpdateUser, User, UserKey, UserSearch};
+use async_trait::async_trait;
 use serde_json::Value;
 use std::fmt::Debug;
 use thiserror::Error;
@@ -11,8 +12,43 @@ pub type PersistenceResult<T> = Result<T, PersistenceError>;
 
 /// Abstract our persistence API so it can be swapped out
 /// for any backend.
-#[async_trait::async_trait]
 pub trait UserPersistence: Send + Sync + Debug {
+    /// Lookup a user from persistent storage.
+    fn get_user(
+        &self,
+        id: &UserKey,
+    ) -> impl std::future::Future<Output = PersistenceResult<Option<User>>> + Send;
+    /// Save a user to persistent storage.
+    fn save_user(
+        &self,
+        user: &User,
+    ) -> impl std::future::Future<Output = PersistenceResult<User>> + Send;
+    /// Update a user in persistent storage.
+    fn update_user(
+        &self,
+        user: &UpdateUser,
+    ) -> impl std::future::Future<Output = PersistenceResult<()>> + Send;
+    /// Remove a user from persistent storage.
+    fn remove_user(
+        &self,
+        user: &UserKey,
+    ) -> impl std::future::Future<Output = PersistenceResult<()>> + Send;
+    /// Search for users with search criteria in `UserSearch` from
+    /// persistent storage.
+    fn search_users(
+        &self,
+        user: &UserSearch,
+    ) -> impl std::future::Future<Output = PersistenceResult<Vec<User>>> + Send;
+    /// Count the number of users grouping by gender.
+    fn count_genders(
+        &self,
+    ) -> impl std::future::Future<Output = Result<Vec<Value>, PersistenceError>> + Send;
+}
+
+/// Abstract our persistence API so it can be swapped out
+/// for any backend.
+#[async_trait]
+pub trait UserPersistenceDynSafe: Send + Sync + Debug {
     /// Lookup a user from persistent storage.
     async fn get_user(&self, id: &UserKey) -> PersistenceResult<Option<User>>;
     /// Save a user to persistent storage.

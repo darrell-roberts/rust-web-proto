@@ -39,7 +39,7 @@ impl<B> MakeSpan<B> for RequestLogger {
 
 impl<C: Display> OnFailure<C> for RequestLogger {
     fn on_failure(&mut self, failure_classification: C, latency: Duration, span: &Span) {
-        span.record("failureClass", &field::display(&failure_classification));
+        span.record("failureClass", field::display(&failure_classification));
         tracing::error!(
             "request failed with {failure_classification} in {} ms",
             latency.as_millis()
@@ -59,7 +59,7 @@ impl<B> OnRequest<B> for RequestLogger {
 
 impl<B> OnResponse<B> for RequestLogger {
     fn on_response(self, response: &Response<B>, latency: Duration, span: &Span) {
-        span.record("statusCode", &field::display(response.status().as_str()));
+        span.record("statusCode", field::display(response.status().as_str()));
         tracing::info!(
             "response completed with status {} in {} minutes {} seconds {} ms",
             response.status(),

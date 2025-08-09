@@ -1,3 +1,4 @@
+//! Route handles for the user API.
 use crate::{
     extractors::{hashing::HashedValidatingJson, validator::ValidatingJson},
     security::hashing::{HashableVector, HashingResponse},
@@ -8,17 +9,18 @@ use crate::{
     AppConfig, USER_MS_TARGET,
 };
 use axum::{
+    body::Body,
     extract::{Extension, Json, Path},
     response::IntoResponse,
 };
 use futures::stream::{self, StreamExt};
 use http::{Response, StatusCode};
-use hyper::Body;
 use serde_json::{to_string, Value};
 use std::sync::Arc;
 use tracing::debug;
 use user_persist::{
     mongo_persistence::MongoPersistence,
+    persistence::UserPersistence,
     types::{UpdateUser, User, UserKey, UserSearch},
 };
 
@@ -26,12 +28,15 @@ type HandlerResult<T> = Result<T, HandlerError>;
 type AppCfg = Extension<Arc<AppConfig>>;
 
 /// Get user handler.
-pub async fn get_user(
-    db: Persist,
+pub async fn get_user<P>(
+    db: Persist<P>,
     Path(id): Path<UserKey>,
     claims: AdminAccess,
     Extension(app_config): AppCfg,
-) -> impl IntoResponse {
+) -> impl IntoResponse
+where
+    P: UserPersistence,
+{
     debug!(
       target: USER_MS_TARGET,
       "Received id: {id} with claims: {claims}"
@@ -43,7 +48,7 @@ pub async fn get_user(
       target: USER_MS_TARGET,
       "db result: {}",
       match user {
-        Some(ref u) => format!("{}", u),
+        Some(ref u) => format!("{u}"),
         None => "No User".to_owned(),
       }
     );
@@ -53,13 +58,16 @@ pub async fn get_user(
 }
 
 /// Save user handler.
-#[axum_macros::debug_handler]
-pub async fn save_user(
-    db: Persist,
+/// #[axum_macros::debug_handler]
+pub async fn save_user<P>(
+    db: Persist<P>,
     _claims: UserAccess,
     Extension(app_config): AppCfg,
     ValidatingJson(user): ValidatingJson<User>,
-) -> impl IntoResponse {
+) -> impl IntoResponse
+where
+    P: UserPersistence,
+{
     debug!(target: USER_MS_TARGET, "saving user: {user}");
     db.save_user(&user)
         .await
@@ -68,11 +76,14 @@ pub async fn save_user(
 }
 
 /// Update user handler.
-pub async fn update_user(
-    db: Persist,
+pub async fn update_user<P>(
+    db: Persist<P>,
     _claims: AdminAccess,
     HashedValidatingJson(user): HashedValidatingJson<UpdateUser>,
-) -> HandlerResult<StatusCode> {
+) -> HandlerResult<StatusCode>
+where
+    P: UserPersistence,
+{
     debug!(target: USER_MS_TARGET, "updating user with {user}");
     db.update_user(&user)
         .await
@@ -81,12 +92,15 @@ pub async fn update_user(
 }
 
 /// Search users handler.
-pub async fn search_users(
-    db: Persist,
+pub async fn search_users<P>(
+    db: Persist<P>,
     claims: AdminAccess,
     Extension(app_config): AppCfg,
     ValidatingJson(user_search): ValidatingJson<UserSearch>,
-) -> impl IntoResponse {
+) -> impl IntoResponse
+where
+    P: UserPersistence,
+{
     debug!(
       target: USER_MS_TARGET,
       "Searching for users with {user_search} and claims {claims}"
@@ -99,11 +113,14 @@ pub async fn search_users(
 }
 
 /// Delete user handler.
-pub async fn delete_user(
-    db: Persist,
+pub async fn delete_user<P>(
+    db: Persist<P>,
     Path(id): Path<UserKey>,
     _claims: AdminAccess,
-) -> impl IntoResponse {
+) -> impl IntoResponse
+where
+    P: UserPersistence,
+{
     match db.remove_user(&id).await {
         Ok(_) => (StatusCode::OK).into_response(),
         Err(e) => HandlerError::from(e).into_response(),
@@ -111,7 +128,10 @@ pub async fn delete_user(
 }
 
 /// Count users handler.
-pub async fn count_users(db: Persist, claims: AdminAccess) -> HandlerResult<Json<Vec<Value>>> {
+pub async fn count_users<P>(db: Persist<P>, claims: AdminAccess) -> HandlerResult<Json<Vec<Value>>>
+where
+    P: UserPersistence,
+{
     debug!(target: USER_MS_TARGET, "Claims: {claims}");
     let counts = db.count_genders().await?;
     debug!(target: USER_MS_TARGET, "User counts: {counts:?}");
@@ -148,6 +168,6 @@ pub async fn download_users(
     Ok(Response::builder()
         .status(StatusCode::OK)
         .header("Content-Type", "application/json")
-        .body(Body::wrap_stream(response_stream))
+        .body(Body::from_stream(response_stream))
         .unwrap())
 }

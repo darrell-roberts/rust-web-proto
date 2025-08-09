@@ -32,7 +32,7 @@ async fn get_user() {
 
     assert_eq!(response.status(), StatusCode::OK);
     let user = body_as::<HashedUser>(response).await;
-    assert_eq!(&user.hid, "LCZLrq1TUum5LmbwzIoopIolNqLGv8iewjdsu7/49G8=")
+    assert_eq!(&user.hid, "LCZLrq1TUum5LmbwzIoopIolNqLGv8iewjdsu7_49G8=")
 }
 
 #[tokio::test]
@@ -143,7 +143,7 @@ async fn update_user() {
         name: "New Name".into(),
         email: Email("test@test.com".into()),
         age: 100,
-        hid: "xBS6Bfv589WArC5A3psqFZRv/sPe8thJqRHBaipYsho=".into(),
+        hid: "xBS6Bfv589WArC5A3psqFZRv_sPe8thJqRHBaipYsho=".into(),
     };
 
     let update_user_json = to_string(&update_user).unwrap();

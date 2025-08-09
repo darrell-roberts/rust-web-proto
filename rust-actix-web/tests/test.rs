@@ -11,7 +11,7 @@ use serde_json::{json, Value};
 use std::sync::{Arc, Once};
 use tracing_actix_web::TracingLogger;
 use tracing_subscriber::EnvFilter;
-use user_persist::persistence::{PersistenceError, PersistenceResult, UserPersistence};
+use user_persist::persistence::{PersistenceError, PersistenceResult, UserPersistenceDynSafe};
 use user_persist::types::{Email, Gender, UpdateUser, User, UserKey, UserSearch};
 
 static INIT: Once = Once::new();
@@ -44,7 +44,7 @@ pub struct TestPersistence;
 
 // A mock persistence for testing.
 #[async_trait]
-impl UserPersistence for TestPersistence {
+impl UserPersistenceDynSafe for TestPersistence {
     async fn get_user(&self, id: &UserKey) -> Result<Option<User>, PersistenceError> {
         if id.0 == "61c0d1954c6b974ca7000000" {
             Ok(Some(test_user()))
@@ -88,7 +88,8 @@ async fn get_service() -> impl Service<
     Response = dev::ServiceResponse<impl MessageBody>,
     Error = actix_web::Error,
 > {
-    let persist: web::Data<Arc<dyn UserPersistence>> = web::Data::new(Arc::new(TestPersistence));
+    let persist: web::Data<Arc<dyn UserPersistenceDynSafe>> =
+        web::Data::new(Arc::new(TestPersistence));
     test::init_service(
         App::new()
             .app_data(persist)

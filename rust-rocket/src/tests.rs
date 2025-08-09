@@ -17,16 +17,16 @@ use std::sync::{Arc, Once};
 use thiserror::Error;
 use tracing::{event, Level};
 use tracing_subscriber::EnvFilter;
-use user_persist::persistence::PersistenceResult;
+use user_persist::persistence::{PersistenceResult, UserPersistenceDynSafe};
 use user_persist::{
-    persistence::{PersistenceError, UserPersistence},
+    persistence::PersistenceError,
     types::{Email, Gender, UpdateUser, User, UserKey, UserSearch},
 };
 
 const USER_PATH: &str = "/api/v1/user";
 
 fn get_rocket() -> Rocket<Build> {
-    let mongo_pesist: Arc<dyn UserPersistence> = Arc::new(TestPersistence);
+    let mongo_pesist: Arc<dyn UserPersistenceDynSafe> = Arc::new(TestPersistence);
     rocket::build()
         .manage(mongo_pesist)
         .attach(fairings::RequestIdFairing)
@@ -63,7 +63,7 @@ enum TestError {
     #[error("Test failed")]
     RocketError {
         #[from]
-        source: rocket::error::Error,
+        source: Box<rocket::error::Error>,
     },
     #[error("Serialization failed")]
     SerializeError {
@@ -89,7 +89,7 @@ fn test_user() -> User {
 
 // A mock persistence for testing.
 #[async_trait]
-impl UserPersistence for TestPersistence {
+impl UserPersistenceDynSafe for TestPersistence {
     async fn get_user(&self, id: &UserKey) -> Result<Option<User>, PersistenceError> {
         if id.0 == "61c0d1954c6b974ca7000000" {
             Ok(Some(test_user()))
@@ -167,7 +167,7 @@ fn test_jwt_expired(role: Role) -> String {
 #[test]
 fn get_user() -> TestResult<()> {
     init_log();
-    let client = Client::tracked(get_rocket())?;
+    let client = Client::tracked(get_rocket()).map_err(Box::new)?;
     let response = client
         .get("/api/v1/user/61c0d1954c6b974ca7000000")
         .header(Header::new("Authorization", test_jwt(Role::Admin)))
@@ -185,7 +185,7 @@ fn get_user() -> TestResult<()> {
 fn get_user_invalid_access() -> TestResult<()> {
     init_log();
 
-    let client = Client::tracked(get_rocket())?;
+    let client = Client::tracked(get_rocket()).map_err(Box::new)?;
     let response = client
         .get("/api/v1/user/61c0d1954c6b974ca7000000")
         .header(Header::new("Authorization", test_jwt(Role::User)))
@@ -203,7 +203,7 @@ fn get_user_invalid_access() -> TestResult<()> {
 fn get_user_invalid_access_expired_claim() -> TestResult<()> {
     init_log();
 
-    let client = Client::tracked(get_rocket())?;
+    let client = Client::tracked(get_rocket()).map_err(Box::new)?;
     let response = client
         .get("/api/v1/user/61c0d1954c6b974ca7000000")
         .header(Header::new("Authorization", test_jwt_expired(Role::User)))
@@ -219,7 +219,7 @@ fn get_user_invalid_access_expired_claim() -> TestResult<()> {
 #[test]
 fn save_user() -> TestResult<()> {
     init_log();
-    let client = Client::tracked(get_rocket())?;
+    let client = Client::tracked(get_rocket()).map_err(Box::new)?;
     let json_user = serde_json::to_string(&test_user())?;
 
     event!(target: TEST_TARGET, Level::DEBUG, "json_user: {json_user}");
@@ -238,7 +238,7 @@ fn save_user() -> TestResult<()> {
 #[test]
 fn save_user_rejection() -> TestResult<()> {
     init_log();
-    let client = Client::tracked(get_rocket())?;
+    let client = Client::tracked(get_rocket()).map_err(Box::new)?;
     let response = client
         .post("/api/v1/user")
         .header(ContentType::JSON)
@@ -288,7 +288,7 @@ fn save_user_rejection() -> TestResult<()> {
 #[test]
 fn search_users() -> TestResult<()> {
     init_log();
-    let client = Client::tracked(get_rocket())?;
+    let client = Client::tracked(get_rocket()).map_err(Box::new)?;
     let users_search = UserSearch {
         email: Some(Email("test@somewhere.com".to_owned())),
         gender: None,
@@ -307,7 +307,7 @@ fn search_users() -> TestResult<()> {
 #[test]
 fn count_genders() -> TestResult<()> {
     init_log();
-    let client = Client::tracked(get_rocket())?;
+    let client = Client::tracked(get_rocket()).map_err(Box::new)?;
     let response = client
         .get("/api/v1/user/counts")
         .header(Header::new("Authorization", test_jwt(Role::User)))

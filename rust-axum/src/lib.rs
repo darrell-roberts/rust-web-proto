@@ -1,3 +1,4 @@
+//! Creates a User REST API backend.
 use crate::{
     arguments::AppConfig,
     handlers::user_handlers,
@@ -34,29 +35,35 @@ pub const FRAMEWORK_TARGET: &str = "framework-ms";
 pub const REQ_ID_HEADER: &str = "x-request-id";
 
 /// User endpoint routes with handler mappings.
-fn user_routes() -> Router {
+fn user_routes<P>() -> Router
+where
+    P: UserPersistence + 'static,
+{
     Router::new()
         .route(
-            "/user/:id",
-            get(user_handlers::get_user), //.layer(HashingMiddleware::hash_user_layer()),
+            "/user/{id}",
+            get(user_handlers::get_user::<P>), //.layer(HashingMiddleware::hash_user_layer()),
         )
         .route(
             "/user",
-            post(user_handlers::save_user), // .layer(HashingMiddleware::hash_user_layer()),
+            post(user_handlers::save_user::<P>), // .layer(HashingMiddleware::hash_user_layer()),
         )
         // TODO: hashing middleware to validate hash on update.
-        .route("/user", put(user_handlers::update_user))
+        .route("/user", put(user_handlers::update_user::<P>))
         .route(
             "/user/search",
-            post(user_handlers::search_users), // .layer(HashingMiddleware::hash_users_layer()),
+            post(user_handlers::search_users::<P>), // .layer(HashingMiddleware::hash_users_layer()),
         )
-        .route("/user/counts", get(user_handlers::count_users))
+        .route("/user/counts", get(user_handlers::count_users::<P>))
         .route("/user/download", get(user_handlers::download_users))
-        .route("/user/:id", delete(user_handlers::delete_user))
+        .route("/user/{id}", delete(user_handlers::delete_user::<P>))
 }
 
 /// Builds the routes and the layered middleware.
-pub fn build_app(persist: Arc<dyn UserPersistence>, app_config: AppConfig) -> Router {
+pub fn build_app<P>(persist: Arc<P>, app_config: AppConfig) -> Router
+where
+    P: UserPersistence + 'static,
+{
     let tower_middleware = ServiceBuilder::new()
         .layer(SetRequestIdLayer::new(
             HeaderName::from_static(REQ_ID_HEADER),
@@ -79,6 +86,6 @@ pub fn build_app(persist: Arc<dyn UserPersistence>, app_config: AppConfig) -> Ro
         .layer(CompressionLayer::new());
 
     Router::new()
-        .nest("/api/v1", user_routes())
+        .nest("/api/v1", user_routes::<P>())
         .layer(tower_middleware)
 }

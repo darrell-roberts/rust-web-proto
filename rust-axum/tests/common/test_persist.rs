@@ -1,4 +1,3 @@
-use async_trait::async_trait;
 use mongodb::bson::oid::ObjectId;
 use serde_json::{json, Value};
 use std::{collections::HashMap, ops::Deref, sync::Arc, sync::RwLock};
@@ -46,7 +45,6 @@ impl Default for TestPersistence {
 }
 
 // A test implementation of the UserPersistence layer.
-#[async_trait]
 impl UserPersistence for TestPersistence {
     async fn get_user(&self, id: &UserKey) -> Result<Option<User>, PersistenceError> {
         let m = self.read().unwrap();

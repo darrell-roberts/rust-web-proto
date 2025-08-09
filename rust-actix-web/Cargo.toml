@@ -15,7 +15,7 @@ user-persist = { path = "../user-persist" }
 log = "0.4"
 tracing = "0.1"
 thiserror = "*"
-tracing-actix-web="0.6"
+tracing-actix-web = "0.7"
 async-trait = "0.1"
 actix-http = "3"
 actix-service = "2"
@@ -31,7 +31,7 @@ default-features = false
 features = ["json", "env-filter", "std", "ansi", "fmt"]
 
 [dependencies.tokio]
-version = "1.16"
+version = "1.47"
 features = ["time"]
 
 [dependencies.actix-web]
@@ -42,10 +42,10 @@ features = ["openssl"]
 version = "1.0"
 
 [dependencies.mongodb]
-version = "2.1"
+version = "3.2"
 
 [dependencies.clap]
-version = "3.0"
+version = "4.5"
 features = ["derive"]
 
 [dependencies.uuid]
@@ -55,4 +55,3 @@ features = ["v4"]
 [dependencies.openssl]
 version = "0.10"
 features = ["v110"]
-

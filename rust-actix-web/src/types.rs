@@ -18,7 +18,7 @@ impl ResponseError for HandlerError {
     }
 
     fn error_response(&self) -> HttpResponse<body::BoxBody> {
-        let body = serde_json::to_string(&format!("{}", self)).unwrap_or_default();
+        let body = serde_json::to_string(&format!("{self}")).unwrap_or_default();
         HttpResponse::ServiceUnavailable()
             .content_type("application/json")
             .body(body)

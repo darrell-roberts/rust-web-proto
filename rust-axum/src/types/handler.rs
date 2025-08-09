@@ -12,7 +12,7 @@ use serde_json::json;
 use std::sync::Arc;
 use thiserror::Error;
 use tracing::{event, Level};
-use user_persist::persistence::{PersistenceError, UserPersistence};
+use user_persist::persistence::PersistenceError;
 
 /// Common error type for handlers.
 #[derive(Debug, Error)]
@@ -50,4 +50,4 @@ impl IntoResponse for HandlerError {
 }
 
 /// Type alias for UserPersistence Trait object.
-pub type Persist = Extension<Arc<dyn UserPersistence>>;
+pub type Persist<T> = Extension<Arc<T>>;
