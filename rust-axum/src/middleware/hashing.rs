@@ -49,23 +49,15 @@ pub struct HashingMiddleware<S, F> {
     pub hash_fn: F,
 }
 
-type HashingFunc = fn(&str, Bytes) -> Bytes;
-
-impl<S> HashingMiddleware<S, HashingFunc> {
-    /// Creates a middleware layer that will add a hash to a successful user response.
-    pub fn hash_users_layer() -> LayerFn<fn(S) -> HashingMiddleware<S, HashingFunc>> {
-        layer_fn(|inner| HashingMiddleware {
-            inner,
-            hash_fn: hash_users,
-        })
-    }
-
-    /// Creates a middleware layer that will add a hash to a successful list of users response.
-    pub fn hash_user_layer() -> LayerFn<fn(S) -> HashingMiddleware<S, HashingFunc>> {
-        layer_fn(|inner| HashingMiddleware {
-            inner,
-            hash_fn: hash_user,
-        })
+impl<S, F> HashingMiddleware<S, F> {
+    /// Create a hashing middleware with a provided hashing transformation function.
+    pub fn hashing_layer(
+        hash_fn: F,
+    ) -> LayerFn<impl Fn(S) -> HashingMiddleware<S, F> + Clone + 'static>
+    where
+        F: FnMut(&str, Bytes) -> Bytes + Clone + Copy + 'static + Send,
+    {
+        layer_fn(move |inner| HashingMiddleware { inner, hash_fn })
     }
 }
 
