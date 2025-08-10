@@ -71,9 +71,9 @@ impl<S> HashingMiddleware<S, HashingFunc> {
 
 impl<S, F> Service<Request<Body>> for HashingMiddleware<S, F>
 where
-    S: Service<Request<Body>, Response = Response> + Clone + Send + 'static,
+    S: Service<Request<Body>, Response = Response> + Send + 'static,
     S::Future: Send + 'static,
-    F: FnMut(&str, Bytes) -> Bytes + Clone + 'static + Send,
+    F: FnMut(&str, Bytes) -> Bytes + Clone + Copy + 'static + Send,
 {
     type Response = S::Response;
     type Error = S::Error;
@@ -93,23 +93,20 @@ where
 
         debug!("hash_prefix: {hash_prefix}");
 
-        let clone = self.inner.clone();
-        let mut inner = std::mem::replace(&mut self.inner, clone);
-        let mut hash_f = self.hash_fn.clone();
+        let mut hash_f = self.hash_fn;
+        let fut = self.inner.call(req);
 
         Box::pin(async move {
-            let res = inner.call(req).await?;
+            let res = fut.await?;
 
+            // Only apply hashing transformation to successful response.
             if !res.status().is_success() {
                 return Ok(res);
             }
 
             debug!("Hashing response");
             Ok(match to_bytes(res.into_body(), usize::MAX).await {
-                Ok(bytes) => {
-                    let hashed = hash_f(&hash_prefix, bytes);
-                    Body::from(hashed).into_response()
-                }
+                Ok(bytes) => Body::from(hash_f(&hash_prefix, bytes)).into_response(),
                 Err(_err) => (StatusCode::INTERNAL_SERVER_ERROR, "Hashing failed").into_response(),
             })
         })
