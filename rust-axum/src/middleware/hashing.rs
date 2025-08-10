@@ -1,5 +1,5 @@
 //! Hashing middleware.
-use crate::{security::hashing::Hashable, AppConfig};
+use crate::{security::hashing::IntoTypeWithHash, AppConfig};
 use axum::{
     body::{to_bytes, Body},
     http::Request,
@@ -29,9 +29,11 @@ pub fn hash_user(hash_prefix: &str, bytes: Bytes) -> Bytes {
 }
 /// Deserialize the response and call its hash method.
 pub fn hash_users(hash_prefix: &str, bytes: Bytes) -> Bytes {
-    match serde_json::from_slice(&bytes)
-        .map(|v: Vec<User>| v.iter().map(|u| u.hash(hash_prefix)).collect::<Vec<_>>())
-    {
+    match serde_json::from_slice(&bytes).map(|v: Vec<User>| {
+        v.into_iter()
+            .map(|u| u.hash(hash_prefix))
+            .collect::<Vec<_>>()
+    }) {
         Ok(hashed) => Bytes::from(serde_json::to_vec(&hashed).unwrap()),
         Err(e) => {
             error!("Failed to hash response {e}");

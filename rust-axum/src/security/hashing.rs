@@ -10,10 +10,10 @@ use user_persist::{
     Validate, ValidationErrors,
 };
 
-/// A type that can be converted into a hash.
-pub trait Hashable {
+/// A type that can be converted into a type with a hash.
+pub trait IntoTypeWithHash {
     type Hashed: Serialize + IntoResponse;
-    fn hash(&self, hash_prefix: &str) -> Self::Hashed;
+    fn hash(self, hash_prefix: &str) -> Self::Hashed;
 }
 
 /// A hashed type that validates its hash.
@@ -73,25 +73,27 @@ impl HashValidating for UpdateUser {
     }
 }
 
-impl Hashable for User {
+impl IntoTypeWithHash for User {
     type Hashed = HashedUser;
 
-    fn hash(&self, hash_prefix: &str) -> Self::Hashed {
+    fn hash(self, hash_prefix: &str) -> Self::Hashed {
         HashedUser {
-            user: self.clone(),
             hid: hash_value(&format!("{hash_prefix}{}{}", self.name, self.email.0)),
+            user: self,
         }
     }
 }
 
-impl<T> Hashable for Vec<T>
+impl<T> IntoTypeWithHash for Vec<T>
 where
-    T: Hashable,
-    Vec<<T as Hashable>::Hashed>: IntoResponse,
+    T: IntoTypeWithHash,
+    Vec<<T as IntoTypeWithHash>::Hashed>: IntoResponse,
 {
     type Hashed = Vec<T::Hashed>;
-    fn hash(&self, hash_prefix: &str) -> Self::Hashed {
-        self.iter().map(|t| t.hash(hash_prefix)).collect::<Vec<_>>()
+    fn hash(self, hash_prefix: &str) -> Self::Hashed {
+        self.into_iter()
+            .map(|t| t.hash(hash_prefix))
+            .collect::<Vec<_>>()
     }
 }
 
@@ -141,7 +143,7 @@ impl<T: Hashable> IntoResponse for HashableVector<T> {
 
 #[cfg(test)]
 mod test {
-    use super::Hashable;
+    use super::IntoTypeWithHash;
     use user_persist::types::{Email, Gender, User};
     #[test]
     fn test_hash_user() {
