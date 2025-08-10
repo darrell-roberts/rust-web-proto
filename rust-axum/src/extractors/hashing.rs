@@ -1,6 +1,4 @@
-/*!
-Provides hashing validation for payload requests.
-*/
+//! Extractor that validates hashes for types with hashes.
 use crate::{
     extractors::validator::{JsonValidationError, ValidatingJson},
     security::hashing::HashValidating,

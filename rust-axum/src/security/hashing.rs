@@ -1,6 +1,6 @@
 //! Provides hashing capabilities for API validation.
 use axum::response::{IntoResponse, Json, Response};
-use base64::Engine;
+use base64::{engine::general_purpose::URL_SAFE, Engine};
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use std::fmt::{Display, Formatter};
@@ -12,7 +12,9 @@ use user_persist::{
 
 /// A type that can be converted into a type with a hash.
 pub trait IntoTypeWithHash {
+    /// The hashed type this converts into.
     type Hashed: Serialize + IntoResponse;
+    /// Create a hash from self and consume into a new hashed type.
     fn hash(self, hash_prefix: &str) -> Self::Hashed;
 }
 
@@ -27,9 +29,10 @@ pub trait HashValidating {
 fn hash_value(value: &str) -> String {
     let mut hasher = Sha256::new();
     hasher.update(value);
-    base64::engine::general_purpose::URL_SAFE.encode(hasher.finalize())
+    URL_SAFE.encode(hasher.finalize())
 }
 
+/// A User type that now has a hash.
 #[derive(Debug, Serialize, Deserialize)]
 pub struct HashedUser {
     #[serde(flatten)]
@@ -90,6 +93,7 @@ where
     Vec<<T as IntoTypeWithHash>::Hashed>: IntoResponse,
 {
     type Hashed = Vec<T::Hashed>;
+
     fn hash(self, hash_prefix: &str) -> Self::Hashed {
         self.into_iter()
             .map(|t| t.hash(hash_prefix))
@@ -145,6 +149,7 @@ impl<T: Hashable> IntoResponse for HashableVector<T> {
 mod test {
     use super::IntoTypeWithHash;
     use user_persist::types::{Email, Gender, User};
+
     #[test]
     fn test_hash_user() {
         let user = User {
@@ -156,11 +161,6 @@ mod test {
         };
 
         let hashed = user.hash("some_prefix");
-
-        print!("hashed user: {}", serde_json::to_string(&hashed).unwrap());
-        assert_eq!(
-            hashed.hid,
-            "0HBmtxUP3a38op1YHscpgdAPjyRDkHq89bzPnk8ibDo=".to_owned()
-        );
+        assert_eq!(hashed.hid, "0HBmtxUP3a38op1YHscpgdAPjyRDkHq89bzPnk8ibDo=");
     }
 }
