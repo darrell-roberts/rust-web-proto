@@ -1,18 +1,21 @@
 //! Provides hashing capabilities for API validation.
 use axum::response::{IntoResponse, Json, Response};
-use base64::Engine;
+use base64::{engine::general_purpose::URL_SAFE, Engine};
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
-use std::fmt::Display;
-use std::fmt::Formatter;
+use std::fmt::{Display, Formatter};
 use tracing::debug;
-use user_persist::types::{UpdateUser, User};
-use user_persist::{Validate, ValidationErrors};
+use user_persist::{
+    types::{UpdateUser, User},
+    Validate, ValidationErrors,
+};
 
-/// A type that can be converted into a hash.
-pub trait Hashable {
+/// A type that can be converted into a type with a hash.
+pub trait IntoTypeWithHash {
+    /// The hashed type this converts into.
     type Hashed: Serialize + IntoResponse;
-    fn hash(&self, hash_prefix: &str) -> Self::Hashed;
+    /// Create a hash from self and consume into a new hashed type.
+    fn hash(self, hash_prefix: &str) -> Self::Hashed;
 }
 
 /// A hashed type that validates its hash.
@@ -26,9 +29,10 @@ pub trait HashValidating {
 fn hash_value(value: &str) -> String {
     let mut hasher = Sha256::new();
     hasher.update(value);
-    base64::engine::general_purpose::URL_SAFE.encode(hasher.finalize())
+    URL_SAFE.encode(hasher.finalize())
 }
 
+/// A User type that now has a hash.
 #[derive(Debug, Serialize, Deserialize)]
 pub struct HashedUser {
     #[serde(flatten)]
@@ -67,30 +71,33 @@ impl Validate for HashedUser {
 impl HashValidating for UpdateUser {
     fn is_valid(&self, hash_prefix: &str) -> bool {
         let new_hash = hash_value(&format!("{hash_prefix}{}{}", self.name, self.email.0));
-        debug!(target: super::HASHING_TARGET, "computed hash: {new_hash}");
+        debug!("computed hash: {new_hash}");
         new_hash == self.hid
     }
 }
 
-impl Hashable for User {
+impl IntoTypeWithHash for User {
     type Hashed = HashedUser;
 
-    fn hash(&self, hash_prefix: &str) -> Self::Hashed {
+    fn hash(self, hash_prefix: &str) -> Self::Hashed {
         HashedUser {
-            user: self.clone(),
             hid: hash_value(&format!("{hash_prefix}{}{}", self.name, self.email.0)),
+            user: self,
         }
     }
 }
 
-impl<T> Hashable for Vec<T>
+impl<T> IntoTypeWithHash for Vec<T>
 where
-    T: Hashable,
-    Vec<<T as Hashable>::Hashed>: IntoResponse,
+    T: IntoTypeWithHash,
+    Vec<<T as IntoTypeWithHash>::Hashed>: IntoResponse,
 {
     type Hashed = Vec<T::Hashed>;
-    fn hash(&self, hash_prefix: &str) -> Self::Hashed {
-        self.iter().map(|t| t.hash(hash_prefix)).collect::<Vec<_>>()
+
+    fn hash(self, hash_prefix: &str) -> Self::Hashed {
+        self.into_iter()
+            .map(|t| t.hash(hash_prefix))
+            .collect::<Vec<_>>()
     }
 }
 
@@ -140,8 +147,9 @@ impl<T: Hashable> IntoResponse for HashableVector<T> {
 
 #[cfg(test)]
 mod test {
-    use super::Hashable;
+    use super::IntoTypeWithHash;
     use user_persist::types::{Email, Gender, User};
+
     #[test]
     fn test_hash_user() {
         let user = User {
@@ -153,11 +161,6 @@ mod test {
         };
 
         let hashed = user.hash("some_prefix");
-
-        print!("hashed user: {}", serde_json::to_string(&hashed).unwrap());
-        assert_eq!(
-            hashed.hid,
-            "0HBmtxUP3a38op1YHscpgdAPjyRDkHq89bzPnk8ibDo=".to_owned()
-        );
+        assert_eq!(hashed.hid, "0HBmtxUP3a38op1YHscpgdAPjyRDkHq89bzPnk8ibDo=");
     }
 }
