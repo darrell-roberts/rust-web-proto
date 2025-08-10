@@ -3,7 +3,7 @@ use http::Request;
 use tower_http::request_id::{MakeRequestId, RequestId};
 use uuid::Uuid;
 
-// pub mod hashing;
+pub mod hashing;
 pub mod request_trace;
 
 #[derive(Clone, Copy)]

@@ -1,12 +1,10 @@
 //! Provides hashing capabilities for API validation.
-use crate::AppConfig;
 use axum::response::{IntoResponse, Json, Response};
 use base64::Engine;
-use http::StatusCode;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
+use std::fmt::Display;
 use std::fmt::Formatter;
-use std::{fmt::Display, sync::Arc};
 use tracing::debug;
 use user_persist::types::{UpdateUser, User};
 use user_persist::{Validate, ValidationErrors};
@@ -19,6 +17,7 @@ pub trait Hashable {
 
 /// A hashed type that validates its hash.
 pub trait HashValidating {
+    /// Checks if the payload has been tampered with.
     fn is_valid(&self, hash_prefix: &str) -> bool;
 }
 
@@ -95,6 +94,7 @@ where
     }
 }
 
+/*
 // Alternative to middleware
 pub struct HashingResponse<T: Hashable> {
     payload: T,
@@ -136,6 +136,7 @@ impl<T: Hashable> IntoResponse for HashableVector<T> {
         (StatusCode::OK, Json(hashed)).into_response()
     }
 }
+*/
 
 #[cfg(test)]
 mod test {

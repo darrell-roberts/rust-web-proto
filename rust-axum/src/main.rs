@@ -3,12 +3,10 @@ use axum::extract::Extension;
 use axum_server::tls_rustls::RustlsConfig;
 use clap::Parser;
 use rust_axum::{
-    arguments::{test_jwt, AppConfig, ProgramArgs},
+    arguments::{AppConfig, ProgramArgs},
     build_app,
-    types::jwt::Role,
 };
 use std::{error::Error, net::SocketAddr, sync::Arc};
-use tracing::{event, Level};
 use tracing_subscriber::EnvFilter;
 use user_persist::mongo_persistence::MongoPersistence;
 
@@ -24,19 +22,6 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
     let program_opts = ProgramArgs::parse();
     let app_config = AppConfig::new(program_opts.jwt_secret.as_bytes());
-
-    // Print out some test JWT's.
-    event!(
-        Level::DEBUG,
-        "test admin jwt: {}",
-        test_jwt(&app_config, Role::Admin)
-    );
-
-    event!(
-        Level::DEBUG,
-        "test user jwt: {}",
-        test_jwt(&app_config, Role::User)
-    );
 
     let config = RustlsConfig::from_pem_file(
         program_opts.server_tls_cert_file(),
