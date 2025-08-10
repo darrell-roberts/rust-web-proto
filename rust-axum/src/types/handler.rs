@@ -42,5 +42,5 @@ impl IntoResponse for HandlerError {
     }
 }
 
-/// Type alias for UserPersistence Trait object.
-pub type Persist<T> = Extension<Arc<T>>;
+/// Type alias for generic database.
+pub type Database<T> = Extension<Arc<T>>;

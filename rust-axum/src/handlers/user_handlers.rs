@@ -2,7 +2,7 @@
 use crate::{
     extractors::{hashing::HashedValidatingJson, validator::ValidatingJson},
     types::{
-        handler::{HandlerError, Persist},
+        handler::{Database, HandlerError},
         jwt::{AdminAccess, UserAccess},
     },
 };
@@ -22,37 +22,35 @@ use user_persist::{
     types::{UpdateUser, User, UserKey, UserSearch},
 };
 
+/// Handler result that fails with `HandlerError`.
 type HandlerResult<T> = Result<T, HandlerError>;
 
 /// Get user handler.
 pub async fn get_user<P>(
-    db: Persist<P>,
+    db: Database<P>,
     Path(id): Path<UserKey>,
     claims: AdminAccess,
-) -> Result<Json<User>, HandlerError>
+) -> HandlerResult<Json<User>>
 where
     P: UserPersistence,
 {
     debug!("Received id: {id} with claims: {claims}");
-
     let user = db
         .get_user(&id)
         .await
         .map_err(HandlerError::from)?
         .ok_or(HandlerError::ResourceNotFound)?;
-
     debug!("db result: {user}");
-
     Ok(Json(user))
 }
 
 /// Save user handler.
 /// #[axum_macros::debug_handler]
 pub async fn save_user<P>(
-    db: Persist<P>,
+    db: Database<P>,
     _claims: UserAccess,
     ValidatingJson(user): ValidatingJson<User>,
-) -> Result<Json<User>, HandlerError>
+) -> HandlerResult<Json<User>>
 where
     P: UserPersistence,
 {
@@ -63,7 +61,7 @@ where
 
 /// Update user handler.
 pub async fn update_user<P>(
-    db: Persist<P>,
+    db: Database<P>,
     _claims: AdminAccess,
     HashedValidatingJson(user): HashedValidatingJson<UpdateUser>,
 ) -> HandlerResult<StatusCode>
@@ -79,10 +77,10 @@ where
 
 /// Search users handler.
 pub async fn search_users<P>(
-    db: Persist<P>,
+    db: Database<P>,
     claims: AdminAccess,
     ValidatingJson(user_search): ValidatingJson<UserSearch>,
-) -> Result<Json<Vec<User>>, HandlerError>
+) -> HandlerResult<Json<Vec<User>>>
 where
     P: UserPersistence,
 {
@@ -96,21 +94,20 @@ where
 
 /// Delete user handler.
 pub async fn delete_user<P>(
-    db: Persist<P>,
+    db: Database<P>,
     Path(id): Path<UserKey>,
     _claims: AdminAccess,
-) -> impl IntoResponse
+) -> HandlerResult<StatusCode>
 where
     P: UserPersistence,
 {
-    match db.remove_user(&id).await {
-        Ok(_) => (StatusCode::OK).into_response(),
-        Err(e) => HandlerError::from(e).into_response(),
-    }
+    debug!("Deleting user: {id}");
+    db.remove_user(&id).await.map_err(HandlerError::from)?;
+    Ok(StatusCode::OK)
 }
 
 /// Count users handler.
-pub async fn count_users<P>(db: Persist<P>, claims: AdminAccess) -> HandlerResult<Json<Vec<Value>>>
+pub async fn count_users<P>(db: Database<P>, claims: AdminAccess) -> HandlerResult<Json<Vec<Value>>>
 where
     P: UserPersistence,
 {
