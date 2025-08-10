@@ -2,7 +2,7 @@
 use crate::{
     extractors::{hashing::HashedValidatingJson, validator::ValidatingJson},
     types::{
-        handler::{HandlerError, Persist},
+        handler::{Database, HandlerError},
         jwt::{AdminAccess, UserAccess},
     },
 };
@@ -27,7 +27,7 @@ type HandlerResult<T> = Result<T, HandlerError>;
 
 /// Get user handler.
 pub async fn get_user<P>(
-    db: Persist<P>,
+    db: Database<P>,
     Path(id): Path<UserKey>,
     claims: AdminAccess,
 ) -> HandlerResult<Json<User>>
@@ -47,7 +47,7 @@ where
 /// Save user handler.
 /// #[axum_macros::debug_handler]
 pub async fn save_user<P>(
-    db: Persist<P>,
+    db: Database<P>,
     _claims: UserAccess,
     ValidatingJson(user): ValidatingJson<User>,
 ) -> HandlerResult<Json<User>>
@@ -61,7 +61,7 @@ where
 
 /// Update user handler.
 pub async fn update_user<P>(
-    db: Persist<P>,
+    db: Database<P>,
     _claims: AdminAccess,
     HashedValidatingJson(user): HashedValidatingJson<UpdateUser>,
 ) -> HandlerResult<StatusCode>
@@ -77,7 +77,7 @@ where
 
 /// Search users handler.
 pub async fn search_users<P>(
-    db: Persist<P>,
+    db: Database<P>,
     claims: AdminAccess,
     ValidatingJson(user_search): ValidatingJson<UserSearch>,
 ) -> HandlerResult<Json<Vec<User>>>
@@ -94,7 +94,7 @@ where
 
 /// Delete user handler.
 pub async fn delete_user<P>(
-    db: Persist<P>,
+    db: Database<P>,
     Path(id): Path<UserKey>,
     _claims: AdminAccess,
 ) -> HandlerResult<StatusCode>
@@ -107,7 +107,7 @@ where
 }
 
 /// Count users handler.
-pub async fn count_users<P>(db: Persist<P>, claims: AdminAccess) -> HandlerResult<Json<Vec<Value>>>
+pub async fn count_users<P>(db: Database<P>, claims: AdminAccess) -> HandlerResult<Json<Vec<Value>>>
 where
     P: UserPersistence,
 {
