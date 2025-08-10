@@ -14,7 +14,7 @@ use std::{
 };
 use tower::Service;
 use tower_layer::{layer_fn, LayerFn};
-use tracing::{debug, error};
+use tracing::error;
 use user_persist::types::User;
 
 /// Deserialize the response and call its hash method.
@@ -74,21 +74,19 @@ where
     }
 
     fn call(&mut self, req: Request<Body>) -> Self::Future {
-        let hash_prefix = req
+        let config = req
             .extensions()
             .get::<Arc<AppConfig>>()
-            .map(|config| config.hash_prefix())
-            .unwrap_or_else(|| "default_prefix")
-            .to_owned();
+            .expect("Did you forget to add Arc<AppConfig> to state?")
+            .clone();
 
-        debug!("hash_prefix: {hash_prefix}");
         let hash_f = self.hash_fn;
 
         Box::pin(self.inner.call(req).and_then(move |res| async move {
             Ok(if res.status().is_success() {
                 // Apply hashing function.
                 match to_bytes(res.into_body(), usize::MAX).await {
-                    Ok(bytes) => Body::from(hash_f(&hash_prefix, bytes)).into_response(),
+                    Ok(bytes) => Body::from(hash_f(config.hash_prefix(), bytes)).into_response(),
                     Err(_err) => {
                         (StatusCode::INTERNAL_SERVER_ERROR, "Hashing failed").into_response()
                     }
