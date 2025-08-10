@@ -43,7 +43,7 @@ pub fn hash_users(hash_prefix: &str, bytes: Bytes) -> Bytes {
 }
 
 /// Middleware for adding hashes to successful responses.
-#[derive(Clone)]
+#[derive(Clone, Copy)]
 pub struct HashingMiddleware<S, F> {
     pub inner: S,
     pub hash_fn: F,
@@ -80,13 +80,13 @@ where
             .expect("Did you forget to add Arc<AppConfig> to state?")
             .clone();
 
-        let hash_f = self.hash_fn;
+        let hash_fn = self.hash_fn;
 
         Box::pin(self.inner.call(req).and_then(move |res| async move {
             Ok(if res.status().is_success() {
                 // Apply hashing function.
                 match to_bytes(res.into_body(), usize::MAX).await {
-                    Ok(bytes) => Body::from(hash_f(config.hash_prefix(), bytes)).into_response(),
+                    Ok(bytes) => Body::from(hash_fn(config.hash_prefix(), bytes)).into_response(),
                     Err(_err) => {
                         (StatusCode::INTERNAL_SERVER_ERROR, "Hashing failed").into_response()
                     }
