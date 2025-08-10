@@ -1,3 +1,4 @@
+//! Integration tests for routes.
 use crate::common::{
     add_jwt, app, body_as, body_as_str, dump_result, test_persist::test_user, MIME_JSON,
     TEST_TARGET,

@@ -1,9 +1,5 @@
 //! Creates a User REST API backend.
-use crate::{
-    arguments::AppConfig,
-    handlers::user_handlers,
-    types::jwt::{JWTClaims, Role},
-};
+use crate::{arguments::AppConfig, handlers::user_handlers};
 use axum::{
     extract::Extension,
     http::header::HeaderName,

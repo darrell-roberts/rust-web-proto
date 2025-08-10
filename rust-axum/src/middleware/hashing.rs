@@ -40,6 +40,7 @@ pub fn hash_users(hash_prefix: &str, bytes: Bytes) -> Bytes {
     }
 }
 
+/// Middleware for adding hashes to successful responses.
 #[derive(Clone)]
 pub struct HashingMiddleware<S, F> {
     pub inner: S,
@@ -49,6 +50,7 @@ pub struct HashingMiddleware<S, F> {
 type HashingFunc = fn(&str, Bytes) -> Bytes;
 
 impl<S> HashingMiddleware<S, HashingFunc> {
+    /// Creates a middleware layer that will add a hash to a successful user response.
     pub fn hash_users_layer() -> LayerFn<fn(S) -> HashingMiddleware<S, HashingFunc>> {
         layer_fn(|inner| HashingMiddleware {
             inner,
@@ -56,6 +58,7 @@ impl<S> HashingMiddleware<S, HashingFunc> {
         })
     }
 
+    /// Creates a middleware layer that will add a hash to a successful list of users response.
     pub fn hash_user_layer() -> LayerFn<fn(S) -> HashingMiddleware<S, HashingFunc>> {
         layer_fn(|inner| HashingMiddleware {
             inner,
@@ -94,12 +97,12 @@ where
 
         Box::pin(async move {
             let res = inner.call(req).await?;
-            debug!("Hashing response");
 
             if !res.status().is_success() {
                 return Ok(res);
             }
 
+            debug!("Hashing response");
             Ok(match to_bytes(res.into_body(), usize::MAX).await {
                 Ok(bytes) => {
                     let hashed = hash_f(&hash_prefix, bytes);

@@ -17,6 +17,7 @@ pub trait Hashable {
 
 /// A hashed type that validates its hash.
 pub trait HashValidating {
+    /// Checks if the payload has been tampered with.
     fn is_valid(&self, hash_prefix: &str) -> bool;
 }
 

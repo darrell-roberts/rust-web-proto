@@ -1,8 +1,10 @@
 use axum::{body::Body, http::Response, Router};
+use chrono::{Duration, Utc};
+use jsonwebtoken::{encode, EncodingKey, Header};
 use rust_axum::{
-    arguments::{test_jwt, AppConfig},
+    arguments::AppConfig,
     build_app,
-    types::jwt::Role,
+    types::jwt::{JWTClaims, Role},
 };
 use serde::Deserialize;
 use std::sync::{Arc, Once};
@@ -40,7 +42,7 @@ pub fn app(persistence: Option<Arc<TestPersistence>>) -> Router {
 
 /// Add an authorization header token value for given role.
 pub fn add_jwt(role: Role) -> String {
-    format!("Bearer {}", test_jwt(&AppConfig::new(SECRET), role))
+    format!("Bearer {}", test_jwt(role))
 }
 
 pub async fn body_as<T>(response: Response<Body>) -> T
@@ -67,4 +69,20 @@ pub async fn body_as_str(response: Response<Body>) -> String {
 pub async fn dump_result(response: Response<Body>) {
     let body = body_as_str(response).await;
     debug!(target: TEST_TARGET, "result: {body}");
+}
+
+/// Creates a test JWT for the given role.
+pub fn test_jwt(role: Role) -> String {
+    let expiration = Utc::now() + Duration::minutes(25);
+    let test_claims = JWTClaims {
+        sub: "droberts".to_owned(),
+        role,
+        exp: expiration.timestamp(),
+    };
+    encode(
+        &Header::default(),
+        &test_claims,
+        &EncodingKey::from_secret(SECRET),
+    )
+    .unwrap()
 }

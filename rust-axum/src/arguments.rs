@@ -1,8 +1,6 @@
 //! Program arguments and application state.
-use crate::{JWTClaims, Role};
-use chrono::{Duration, Utc};
 use clap::Parser;
-use jsonwebtoken::{encode, DecodingKey, EncodingKey, Header};
+use jsonwebtoken::{DecodingKey, EncodingKey};
 use std::path::PathBuf;
 use user_persist::MongoArgs;
 
@@ -69,15 +67,4 @@ impl AppConfig {
     pub fn hash_prefix(&self) -> &str {
         &self.hash_prefix
     }
-}
-
-/// Creates a test JWT for the given role.
-pub fn test_jwt(opts: &AppConfig, role: Role) -> String {
-    let expiration = Utc::now() + Duration::minutes(25);
-    let test_claims = JWTClaims {
-        sub: "droberts".to_owned(),
-        role,
-        exp: expiration.timestamp(),
-    };
-    encode(&Header::default(), &test_claims, &opts.jwt_encoding_key).unwrap()
 }
