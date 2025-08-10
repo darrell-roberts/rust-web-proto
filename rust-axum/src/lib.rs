@@ -1,5 +1,9 @@
 //! Creates a User REST API backend.
-use crate::{arguments::AppConfig, handlers::user_handlers};
+use crate::{
+    arguments::AppConfig,
+    handlers::user_handlers,
+    middleware::hashing::{hash_user, hash_users},
+};
 use axum::{
     extract::Extension,
     http::header::HeaderName,
@@ -33,16 +37,16 @@ where
     Router::new()
         .route(
             "/user/{id}",
-            get(user_handlers::get_user::<P>).layer(HashingMiddleware::hash_user_layer()),
+            get(user_handlers::get_user::<P>).layer(HashingMiddleware::new(hash_user)),
         )
         .route(
             "/user",
-            post(user_handlers::save_user::<P>).layer(HashingMiddleware::hash_user_layer()),
+            post(user_handlers::save_user::<P>).layer(HashingMiddleware::new(hash_user)),
         )
         .route("/user", put(user_handlers::update_user::<P>))
         .route(
             "/user/search",
-            post(user_handlers::search_users::<P>).layer(HashingMiddleware::hash_users_layer()),
+            post(user_handlers::search_users::<P>).layer(HashingMiddleware::new(hash_users)),
         )
         .route("/user/counts", get(user_handlers::count_users::<P>))
         .route("/user/download", get(user_handlers::download_users))

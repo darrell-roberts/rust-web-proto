@@ -5,7 +5,7 @@ use axum::{
     http::Request,
     response::{IntoResponse, Response},
 };
-use futures::future::BoxFuture;
+use futures::{future::BoxFuture, TryFutureExt as _};
 use http::StatusCode;
 use hyper::body::Bytes;
 use std::{
@@ -49,23 +49,13 @@ pub struct HashingMiddleware<S, F> {
     pub hash_fn: F,
 }
 
-type HashingFunc = fn(&str, Bytes) -> Bytes;
-
-impl<S> HashingMiddleware<S, HashingFunc> {
-    /// Creates a middleware layer that will add a hash to a successful user response.
-    pub fn hash_users_layer() -> LayerFn<fn(S) -> HashingMiddleware<S, HashingFunc>> {
-        layer_fn(|inner| HashingMiddleware {
-            inner,
-            hash_fn: hash_users,
-        })
-    }
-
-    /// Creates a middleware layer that will add a hash to a successful list of users response.
-    pub fn hash_user_layer() -> LayerFn<fn(S) -> HashingMiddleware<S, HashingFunc>> {
-        layer_fn(|inner| HashingMiddleware {
-            inner,
-            hash_fn: hash_user,
-        })
+impl<S, F> HashingMiddleware<S, F> {
+    /// Create a hashing middleware with a provided hashing transformation function.
+    pub fn new(hash_fn: F) -> LayerFn<impl Fn(S) -> HashingMiddleware<S, F> + Clone + 'static>
+    where
+        F: FnOnce(&str, Bytes) -> Bytes + Clone + Copy + 'static + Send,
+    {
+        layer_fn(move |inner| HashingMiddleware { inner, hash_fn })
     }
 }
 
@@ -73,7 +63,7 @@ impl<S, F> Service<Request<Body>> for HashingMiddleware<S, F>
 where
     S: Service<Request<Body>, Response = Response> + Send + 'static,
     S::Future: Send + 'static,
-    F: FnMut(&str, Bytes) -> Bytes + Clone + Copy + 'static + Send,
+    F: FnOnce(&str, Bytes) -> Bytes + Clone + Copy + 'static + Send,
 {
     type Response = S::Response;
     type Error = S::Error;
@@ -92,23 +82,21 @@ where
             .to_owned();
 
         debug!("hash_prefix: {hash_prefix}");
+        let hash_f = self.hash_fn;
 
-        let mut hash_f = self.hash_fn;
-        let fut = self.inner.call(req);
-
-        Box::pin(async move {
-            let res = fut.await?;
-
-            // Only apply hashing transformation to successful response.
-            if !res.status().is_success() {
-                return Ok(res);
-            }
-
-            debug!("Hashing response");
-            Ok(match to_bytes(res.into_body(), usize::MAX).await {
-                Ok(bytes) => Body::from(hash_f(&hash_prefix, bytes)).into_response(),
-                Err(_err) => (StatusCode::INTERNAL_SERVER_ERROR, "Hashing failed").into_response(),
+        Box::pin(self.inner.call(req).and_then(move |res| async move {
+            Ok(if res.status().is_success() {
+                // Apply hashing function.
+                match to_bytes(res.into_body(), usize::MAX).await {
+                    Ok(bytes) => Body::from(hash_f(&hash_prefix, bytes)).into_response(),
+                    Err(_err) => {
+                        (StatusCode::INTERNAL_SERVER_ERROR, "Hashing failed").into_response()
+                    }
+                }
+            } else {
+                // No hashing.
+                res
             })
-        })
+        }))
     }
 }
