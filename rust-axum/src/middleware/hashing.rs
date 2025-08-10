@@ -51,11 +51,9 @@ pub struct HashingMiddleware<S, F> {
 
 impl<S, F> HashingMiddleware<S, F> {
     /// Create a hashing middleware with a provided hashing transformation function.
-    pub fn hashing_layer(
-        hash_fn: F,
-    ) -> LayerFn<impl Fn(S) -> HashingMiddleware<S, F> + Clone + 'static>
+    pub fn new(hash_fn: F) -> LayerFn<impl Fn(S) -> HashingMiddleware<S, F> + Clone + 'static>
     where
-        F: FnMut(&str, Bytes) -> Bytes + Clone + Copy + 'static + Send,
+        F: FnOnce(&str, Bytes) -> Bytes + Clone + Copy + 'static + Send,
     {
         layer_fn(move |inner| HashingMiddleware { inner, hash_fn })
     }
@@ -65,7 +63,7 @@ impl<S, F> Service<Request<Body>> for HashingMiddleware<S, F>
 where
     S: Service<Request<Body>, Response = Response> + Send + 'static,
     S::Future: Send + 'static,
-    F: FnMut(&str, Bytes) -> Bytes + Clone + Copy + 'static + Send,
+    F: FnOnce(&str, Bytes) -> Bytes + Clone + Copy + 'static + Send,
 {
     type Response = S::Response;
     type Error = S::Error;
@@ -84,7 +82,7 @@ where
             .to_owned();
 
         debug!("hash_prefix: {hash_prefix}");
-        let mut hash_f = self.hash_fn;
+        let hash_f = self.hash_fn;
 
         Box::pin(self.inner.call(req).and_then(move |res| async move {
             Ok(if res.status().is_success() {

@@ -37,17 +37,16 @@ where
     Router::new()
         .route(
             "/user/{id}",
-            get(user_handlers::get_user::<P>).layer(HashingMiddleware::hashing_layer(hash_user)),
+            get(user_handlers::get_user::<P>).layer(HashingMiddleware::new(hash_user)),
         )
         .route(
             "/user",
-            post(user_handlers::save_user::<P>).layer(HashingMiddleware::hashing_layer(hash_user)),
+            post(user_handlers::save_user::<P>).layer(HashingMiddleware::new(hash_user)),
         )
         .route("/user", put(user_handlers::update_user::<P>))
         .route(
             "/user/search",
-            post(user_handlers::search_users::<P>)
-                .layer(HashingMiddleware::hashing_layer(hash_users)),
+            post(user_handlers::search_users::<P>).layer(HashingMiddleware::new(hash_users)),
         )
         .route("/user/counts", get(user_handlers::count_users::<P>))
         .route("/user/download", get(user_handlers::download_users))
