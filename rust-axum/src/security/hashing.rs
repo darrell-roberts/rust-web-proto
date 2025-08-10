@@ -3,11 +3,12 @@ use axum::response::{IntoResponse, Json, Response};
 use base64::Engine;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
-use std::fmt::Display;
-use std::fmt::Formatter;
+use std::fmt::{Display, Formatter};
 use tracing::debug;
-use user_persist::types::{UpdateUser, User};
-use user_persist::{Validate, ValidationErrors};
+use user_persist::{
+    types::{UpdateUser, User},
+    Validate, ValidationErrors,
+};
 
 /// A type that can be converted into a hash.
 pub trait Hashable {
@@ -67,7 +68,7 @@ impl Validate for HashedUser {
 impl HashValidating for UpdateUser {
     fn is_valid(&self, hash_prefix: &str) -> bool {
         let new_hash = hash_value(&format!("{hash_prefix}{}{}", self.name, self.email.0));
-        debug!(target: super::HASHING_TARGET, "computed hash: {new_hash}");
+        debug!("computed hash: {new_hash}");
         new_hash == self.hid
     }
 }
