@@ -5,7 +5,7 @@ use axum::{
     http::Request,
     response::{IntoResponse, Response},
 };
-use futures::future::BoxFuture;
+use futures::{future::BoxFuture, TryFutureExt as _};
 use http::StatusCode;
 use hyper::body::Bytes;
 use std::{
@@ -92,23 +92,21 @@ where
             .to_owned();
 
         debug!("hash_prefix: {hash_prefix}");
-
         let mut hash_f = self.hash_fn;
-        let fut = self.inner.call(req);
 
-        Box::pin(async move {
-            let res = fut.await?;
-
-            // Only apply hashing transformation to successful response.
-            if !res.status().is_success() {
-                return Ok(res);
-            }
-
-            debug!("Hashing response");
-            Ok(match to_bytes(res.into_body(), usize::MAX).await {
-                Ok(bytes) => Body::from(hash_f(&hash_prefix, bytes)).into_response(),
-                Err(_err) => (StatusCode::INTERNAL_SERVER_ERROR, "Hashing failed").into_response(),
+        Box::pin(self.inner.call(req).and_then(move |res| async move {
+            Ok(if res.status().is_success() {
+                // Apply hashing function.
+                match to_bytes(res.into_body(), usize::MAX).await {
+                    Ok(bytes) => Body::from(hash_f(&hash_prefix, bytes)).into_response(),
+                    Err(_err) => {
+                        (StatusCode::INTERNAL_SERVER_ERROR, "Hashing failed").into_response()
+                    }
+                }
+            } else {
+                // No hashing.
+                res
             })
-        })
+        }))
     }
 }
