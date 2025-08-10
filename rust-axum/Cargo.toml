@@ -66,3 +66,6 @@ features = ["v4"]
 [dependencies.tokio]
 version = "1"
 features = ["full"]
+
+[dev-dependencies]
+cool_asserts = "2"

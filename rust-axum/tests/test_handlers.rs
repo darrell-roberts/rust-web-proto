@@ -10,11 +10,12 @@ use axum::{
         Method, Request, StatusCode,
     },
 };
+use cool_asserts::assert_matches;
 use rust_axum::{security::hashing::HashedUser, types::jwt::Role};
 use serde_json::{from_str, json, to_string, Value};
 use tower::ServiceExt;
 use tracing::debug;
-use user_persist::types::{Email, UpdateUser, User, UserKey, UserSearch};
+use user_persist::types::{Email, Gender, UpdateUser, User, UserKey, UserSearch};
 
 mod common;
 
@@ -88,7 +89,12 @@ async fn save_user() {
     assert_eq!(response.status(), StatusCode::OK);
     let saved_user = body_as::<User>(response).await;
     debug!("response body: {saved_user:?}");
+
     assert!(saved_user.id.is_some());
+    assert_eq!(saved_user.name, "Test User");
+    assert_eq!(saved_user.age, 100);
+    assert_eq!(saved_user.email, Email("test@test.com".to_string()));
+    assert_eq!(saved_user.gender, Gender::Male);
 }
 
 #[tokio::test]
@@ -167,6 +173,7 @@ async fn update_user() {
     let body = body_as_str(response).await;
     debug!(target: TEST_TARGET, "response body: {body}");
     assert_eq!(status, StatusCode::OK);
+    assert_eq!(body, "");
 }
 
 #[tokio::test]
@@ -229,7 +236,17 @@ async fn search_users() {
         .unwrap();
 
     assert_eq!(response.status(), StatusCode::OK);
-    dump_result(response).await;
+    let users = body_as::<Vec<HashedUser>>(response).await;
+
+    assert_matches!(users, [
+        HashedUser { user: User { id, name, age, email, gender: Gender::Male }, hid } => {
+            assert_eq!(id.as_deref().map(AsRef::as_ref), Some("61c0d1954c6b974ca7000000"));
+            assert_eq!(name, "Test User");
+            assert_eq!(age, 100);
+            assert_eq!(email.as_ref() as &str, "test@test.com");
+            assert_eq!(hid, "LCZLrq1TUum5LmbwzIoopIolNqLGv8iewjdsu7_49G8=");
+        }
+    ]);
 }
 
 #[tokio::test]
@@ -246,5 +263,8 @@ async fn count_users() {
         .unwrap();
 
     assert_eq!(response.status(), StatusCode::OK);
-    dump_result(response).await;
+    assert_eq!(
+        body_as::<Value>(response).await,
+        json!([{"_id":"Male","count":6},{"_id":"Female","count":12}])
+    );
 }
