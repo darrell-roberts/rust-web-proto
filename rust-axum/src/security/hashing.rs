@@ -13,7 +13,7 @@ use user_database::{
 /// A type that can be converted into a type with a hash.
 pub trait IntoTypeWithHash {
     /// The hashed type this converts into.
-    type Hashed: Serialize + IntoResponse;
+    type Hashed: Serialize;
     /// Create a hash from self and consume into a new hashed type.
     fn hash(self, hash_prefix: &str) -> Self::Hashed;
 }
@@ -90,7 +90,6 @@ impl IntoTypeWithHash for User {
 impl<T> IntoTypeWithHash for Vec<T>
 where
     T: IntoTypeWithHash,
-    Vec<<T as IntoTypeWithHash>::Hashed>: IntoResponse,
 {
     type Hashed = Vec<T::Hashed>;
 

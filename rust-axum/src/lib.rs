@@ -1,8 +1,6 @@
 //! Creates a User REST API backend.
 use crate::{
-    arguments::AppConfig,
-    handlers::user_handlers,
-    middleware::hashing::{hash_user, hash_users},
+    arguments::AppConfig, handlers::user_handlers, middleware::hashing::hashing_middleware,
 };
 use axum::{
     extract::Extension,
@@ -10,14 +8,14 @@ use axum::{
     routing::{delete, get, post, put},
     Router,
 };
-use middleware::{hashing::HashingMiddleware, request_trace::RequestLogger};
+use middleware::request_trace::RequestLogger;
 use std::sync::Arc;
 use tower::ServiceBuilder;
 use tower_http::{
     classify::StatusInRangeAsFailures, compression::CompressionLayer,
     propagate_header::PropagateHeaderLayer, request_id::SetRequestIdLayer, trace::TraceLayer,
 };
-use user_database::database::UserDatabase;
+use user_database::{database::UserDatabase, types::User};
 
 pub mod arguments;
 mod extractors;
@@ -37,16 +35,16 @@ where
     Router::new()
         .route(
             "/user/{id}",
-            get(user_handlers::get_user::<P>).layer(HashingMiddleware::new(hash_user)),
+            get(user_handlers::get_user::<P>).layer(hashing_middleware::<User, _>()),
         )
         .route(
             "/user",
-            post(user_handlers::save_user::<P>).layer(HashingMiddleware::new(hash_user)),
+            post(user_handlers::save_user::<P>).layer(hashing_middleware::<User, _>()),
         )
         .route("/user", put(user_handlers::update_user::<P>))
         .route(
             "/user/search",
-            post(user_handlers::search_users::<P>).layer(HashingMiddleware::new(hash_users)),
+            post(user_handlers::search_users::<P>).layer(hashing_middleware::<Vec<User>, _>()),
         )
         .route("/user/counts", get(user_handlers::count_users::<P>))
         .route("/user/download", get(user_handlers::download_users))
