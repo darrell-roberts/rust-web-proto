@@ -11,8 +11,8 @@ use serde_json::{json, Value};
 use std::sync::{Arc, Once};
 use tracing_actix_web::TracingLogger;
 use tracing_subscriber::EnvFilter;
-use user_persist::persistence::{PersistenceError, PersistenceResult, UserPersistenceDynSafe};
-use user_persist::types::{Email, Gender, UpdateUser, User, UserKey, UserSearch};
+use user_database::database::{DatabaseError, DatabaseResult, UserDatabaseDynSafe};
+use user_database::types::{Email, Gender, UpdateUser, User, UserKey, UserSearch};
 
 static INIT: Once = Once::new();
 
@@ -40,12 +40,12 @@ fn test_user() -> User {
 }
 
 #[derive(Debug, Clone)]
-pub struct TestPersistence;
+pub struct TestDatabase;
 
-// A mock persistence for testing.
+// A mock database for testing.
 #[async_trait]
-impl UserPersistenceDynSafe for TestPersistence {
-    async fn get_user(&self, id: &UserKey) -> Result<Option<User>, PersistenceError> {
+impl UserDatabaseDynSafe for TestDatabase {
+    async fn get_user(&self, id: &UserKey) -> Result<Option<User>, DatabaseError> {
         if id.0 == "61c0d1954c6b974ca7000000" {
             Ok(Some(test_user()))
         } else {
@@ -53,23 +53,23 @@ impl UserPersistenceDynSafe for TestPersistence {
         }
     }
 
-    async fn save_user(&self, user: &User) -> Result<User, PersistenceError> {
+    async fn save_user(&self, user: &User) -> Result<User, DatabaseError> {
         Ok(user.clone())
     }
 
-    async fn update_user(&self, _user: &UpdateUser) -> Result<(), PersistenceError> {
+    async fn update_user(&self, _user: &UpdateUser) -> Result<(), DatabaseError> {
         Ok(())
     }
 
-    async fn remove_user(&self, _user: &UserKey) -> PersistenceResult<()> {
+    async fn remove_user(&self, _user: &UserKey) -> DatabaseResult<()> {
         todo!()
     }
 
-    async fn search_users(&self, _user_search: &UserSearch) -> Result<Vec<User>, PersistenceError> {
+    async fn search_users(&self, _user_search: &UserSearch) -> Result<Vec<User>, DatabaseError> {
         Ok(vec![test_user()])
     }
 
-    async fn count_genders(&self) -> Result<Vec<Value>, PersistenceError> {
+    async fn count_genders(&self) -> Result<Vec<Value>, DatabaseError> {
         Ok(vec![
             json! (   {
                 "_id": "Male",
@@ -88,11 +88,10 @@ async fn get_service() -> impl Service<
     Response = dev::ServiceResponse<impl MessageBody>,
     Error = actix_web::Error,
 > {
-    let persist: web::Data<Arc<dyn UserPersistenceDynSafe>> =
-        web::Data::new(Arc::new(TestPersistence));
+    let database: web::Data<Arc<dyn UserDatabaseDynSafe>> = web::Data::new(Arc::new(TestDatabase));
     test::init_service(
         App::new()
-            .app_data(persist)
+            .app_data(database)
             .wrap(JwtAuth::default())
             .wrap(TracingLogger::default())
             .service(

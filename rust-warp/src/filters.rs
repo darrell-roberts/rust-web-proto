@@ -2,16 +2,16 @@ use crate::handlers;
 use serde_json::json;
 use std::{convert::Infallible, sync::Arc};
 use tracing::{event, info_span, Level};
-use user_persist::{persistence::UserPersistence, types::UserKey};
+use user_database::{database::UserDatabase, types::UserKey};
 use uuid::Uuid;
 use warp::Filter;
 
 const FRAMEWORK_TARGET: &str = "ms-framework";
 
-type UserPersist = Arc<dyn UserPersistence>;
+type Database = Arc<dyn UserDatabase>;
 
-/// Provides the persistence API
-fn with_db(db: UserPersist) -> impl Filter<Extract = (UserPersist,), Error = Infallible> + Clone {
+/// Provides the Database API
+fn with_db(db: Database) -> impl Filter<Extract = (Database,), Error = Infallible> + Clone {
     warp::any().map(move || db.clone())
 }
 
@@ -36,9 +36,7 @@ where
 }
 
 /// Top level filter for the User API.
-pub fn user(
-    db: UserPersist,
-) -> impl Filter<Extract = impl warp::Reply, Error = Infallible> + Clone {
+pub fn user(db: Database) -> impl Filter<Extract = impl warp::Reply, Error = Infallible> + Clone {
     let base_path = warp::path("api")
         .and(warp::path("v1"))
         .and(warp::path("user"));
@@ -79,7 +77,7 @@ async fn handle_rejection(err: warp::Rejection) -> Result<impl warp::Reply, Infa
 }
 
 pub fn get_user(
-    db: UserPersist,
+    db: Database,
 ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
     warp::path!(UserKey)
         .and(warp::get())
@@ -88,7 +86,7 @@ pub fn get_user(
 }
 
 pub fn search_users(
-    db: UserPersist,
+    db: Database,
 ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
     warp::path("search")
         .and(warp::post())
@@ -98,7 +96,7 @@ pub fn search_users(
 }
 
 pub fn save_user(
-    db: UserPersist,
+    db: Database,
 ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
     warp::post()
         .and(warp::body::json())
@@ -107,7 +105,7 @@ pub fn save_user(
 }
 
 pub fn count_genders(
-    db: UserPersist,
+    db: Database,
 ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
     warp::path("counts")
         .and(with_db(db))

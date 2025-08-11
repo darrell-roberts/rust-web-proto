@@ -4,7 +4,7 @@ use rocket::{
     Request,
 };
 use tracing::{event, Level};
-use user_persist::ValidationErrors;
+use user_database::ValidationErrors;
 
 #[catch(403)]
 pub fn not_authorized() -> Value {

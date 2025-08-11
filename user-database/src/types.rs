@@ -1,7 +1,4 @@
-/*!
-User persistence types.
-*/
-use crate::PERSISTENCE_TARGET;
+//! User database types.
 use lazy_static::lazy_static;
 use mongodb::bson::oid::ObjectId;
 use regex::Regex;
@@ -10,7 +7,7 @@ use std::{
     fmt::{self, Display},
     ops::Deref,
 };
-use tracing::{event, Level};
+use tracing::debug;
 use validator::{Validate, ValidationError};
 
 /// User Gender
@@ -62,11 +59,7 @@ impl Email {
 
 /// Email validator.
 fn validate_email(email: &Email) -> Result<(), ValidationError> {
-    event!(
-      target: PERSISTENCE_TARGET,
-      Level::DEBUG,
-      "validating email {email}"
-    );
+    debug!("validating email {email}");
     if email.is_valid() {
         Ok(())
     } else {
@@ -115,13 +108,18 @@ impl std::str::FromStr for UserKey {
 /// User type.
 #[derive(Clone, Debug, Deserialize, Serialize, Validate, PartialEq, Eq)]
 pub struct User {
+    /// User id.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub id: Option<UserKey>,
+    /// User name.
     pub name: String,
+    /// User age.
     #[validate(range(min = 100))]
     pub age: u32,
+    /// User email.
     #[validate(custom(function = "validate_email"))]
     pub email: Email,
+    /// User gender.
     pub gender: Gender,
 }
 
@@ -145,12 +143,17 @@ impl Display for User {
 /// Request type to update a user record.
 #[derive(Clone, Debug, Deserialize, Serialize, Validate)]
 pub struct UpdateUser {
+    /// User id.
     pub id: UserKey,
+    /// User name.
     pub name: String,
+    /// User email.
     #[validate(custom(function = "validate_email"))]
     pub email: Email,
+    /// User age.
     #[validate(range(min = 100))]
     pub age: u32,
+    /// User hash.
     pub hid: String,
 }
 

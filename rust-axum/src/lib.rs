@@ -17,7 +17,7 @@ use tower_http::{
     classify::StatusInRangeAsFailures, compression::CompressionLayer,
     propagate_header::PropagateHeaderLayer, request_id::SetRequestIdLayer, trace::TraceLayer,
 };
-use user_persist::persistence::UserPersistence;
+use user_database::database::UserDatabase;
 
 pub mod arguments;
 mod extractors;
@@ -32,7 +32,7 @@ pub const REQ_ID_HEADER: &str = "x-request-id";
 /// User endpoint routes with handler mappings.
 fn user_routes<P>() -> Router
 where
-    P: UserPersistence + 'static,
+    P: UserDatabase + 'static,
 {
     Router::new()
         .route(
@@ -54,9 +54,9 @@ where
 }
 
 /// Builds the routes and the layered middleware.
-pub fn build_app<P>(persist: Arc<P>, app_config: AppConfig) -> Router
+pub fn build_app<P>(database: Arc<P>, app_config: AppConfig) -> Router
 where
-    P: UserPersistence + 'static,
+    P: UserDatabase + 'static,
 {
     let tower_middleware = ServiceBuilder::new()
         .layer(SetRequestIdLayer::new(
@@ -75,7 +75,7 @@ where
             .on_failure(RequestLogger)
             .on_response(RequestLogger),
         )
-        .layer(Extension(persist))
+        .layer(Extension(database))
         .layer(Extension(Arc::new(app_config)))
         .layer(CompressionLayer::new());
 

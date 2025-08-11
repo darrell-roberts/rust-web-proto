@@ -6,7 +6,7 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-user-persist = { path = "../user-persist" }
+user-database = { path = "../user-database" }
 tracing = "0.1"
 serde_json = "1.0"
 futures-util = "0.3"

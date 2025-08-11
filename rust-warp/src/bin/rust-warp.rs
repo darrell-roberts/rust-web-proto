@@ -5,7 +5,7 @@ use rust_warp::{filters::user, ServerOptions};
 use std::sync::Arc;
 use tracing::info;
 use tracing_subscriber::EnvFilter;
-use user_persist::mongo_persistence::MongoPersistence;
+use user_database::mongo_database::MongoDatabase;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -21,7 +21,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     info!("Using options: {server_args}");
 
     let api = user(Arc::new(
-        MongoPersistence::new(server_args.mongo_args).await?,
+        MongoDatabase::new(server_args.mongo_args).await?,
     ));
 
     warp::serve(api)

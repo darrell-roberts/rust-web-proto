@@ -1,10 +1,10 @@
-//! A mocked User persistence test api.
+//! A mocked User database test api.
 use mongodb::bson::oid::ObjectId;
 use serde_json::{json, Value};
 use std::{collections::HashMap, ops::Deref, sync::Arc, sync::RwLock};
-use user_persist::persistence::PersistenceResult;
-use user_persist::{
-    persistence::{PersistenceError, UserPersistence},
+use user_database::database::DatabaseResult;
+use user_database::{
+    database::{DatabaseError, UserDatabase},
     types::{Email, Gender, UpdateUser, User, UserKey, UserSearch},
 };
 
@@ -20,16 +20,16 @@ pub fn test_user(id: Option<UserKey>) -> User {
 }
 
 #[derive(Debug, Clone)]
-pub struct TestPersistence(Arc<RwLock<HashMap<UserKey, User>>>);
+pub struct TestDatabase(Arc<RwLock<HashMap<UserKey, User>>>);
 
-impl Deref for TestPersistence {
+impl Deref for TestDatabase {
     type Target = Arc<RwLock<HashMap<UserKey, User>>>;
     fn deref(&self) -> &Self::Target {
         &self.0
     }
 }
 
-impl TestPersistence {
+impl TestDatabase {
     pub fn new() -> Self {
         // Setup some test data.
         let mut map = HashMap::new();
@@ -39,21 +39,21 @@ impl TestPersistence {
     }
 }
 
-impl Default for TestPersistence {
+impl Default for TestDatabase {
     fn default() -> Self {
-        TestPersistence::new()
+        TestDatabase::new()
     }
 }
 
-// A test implementation of the UserPersistence layer.
-impl UserPersistence for TestPersistence {
-    async fn get_user(&self, id: &UserKey) -> Result<Option<User>, PersistenceError> {
+// A test implementation of the UserDatabase layer.
+impl UserDatabase for TestDatabase {
+    async fn get_user(&self, id: &UserKey) -> Result<Option<User>, DatabaseError> {
         let guard = self.read().unwrap();
         let user = guard.get(id).map(|u| u.to_owned());
         Ok(user)
     }
 
-    async fn save_user(&self, user: &User) -> Result<User, PersistenceError> {
+    async fn save_user(&self, user: &User) -> Result<User, DatabaseError> {
         let mut updated_user = user.clone();
         let user_key = UserKey(ObjectId::new().to_string());
         updated_user.id = Some(user_key.clone());
@@ -61,7 +61,7 @@ impl UserPersistence for TestPersistence {
         Ok(updated_user)
     }
 
-    async fn update_user(&self, user: &UpdateUser) -> Result<(), PersistenceError> {
+    async fn update_user(&self, user: &UpdateUser) -> Result<(), DatabaseError> {
         let mut guard = self.write().unwrap();
         if let Some(old_user) = guard.get_mut(&user.id) {
             old_user.name.clone_from(&user.name);
@@ -70,19 +70,19 @@ impl UserPersistence for TestPersistence {
         Ok(())
     }
 
-    async fn remove_user(&self, user: &UserKey) -> PersistenceResult<()> {
+    async fn remove_user(&self, user: &UserKey) -> DatabaseResult<()> {
         let mut m = self.write().unwrap();
         m.remove(user);
         Ok(())
     }
 
-    async fn search_users(&self, _user_search: &UserSearch) -> Result<Vec<User>, PersistenceError> {
+    async fn search_users(&self, _user_search: &UserSearch) -> Result<Vec<User>, DatabaseError> {
         Ok(vec![test_user(Some(
             "61c0d1954c6b974ca7000000".parse().unwrap(),
         ))])
     }
 
-    async fn count_genders(&self) -> Result<Vec<Value>, PersistenceError> {
+    async fn count_genders(&self) -> Result<Vec<Value>, DatabaseError> {
         Ok(vec![
             json!({
                 "_id": "Male",

@@ -15,7 +15,7 @@ use serde::de::DeserializeOwned;
 use serde_json::json;
 use std::sync::Arc;
 use thiserror::Error;
-use user_persist::Validate;
+use user_database::Validate;
 
 /// An extractor that applies the following:
 /// * Hashing validation

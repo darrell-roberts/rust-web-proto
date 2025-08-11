@@ -1,7 +1,7 @@
-//! A user data model and persistence API.
-pub mod mongo_persistence;
-pub mod mongo_persistence_dyn_safe;
-pub mod persistence;
+//! A user data model and database API.
+pub mod database;
+pub mod mongo_database;
+pub mod mongo_database_dyn_safe;
 pub mod types;
 
 use clap::Args;
@@ -12,9 +12,6 @@ use std::path::PathBuf;
 use tracing::info;
 
 pub use validator::{Validate, ValidationErrors};
-
-/// Tracing target for persistence.
-pub const PERSISTENCE_TARGET: &str = "persistence";
 
 /// Setup mongodb client. This setup uses TLS with cert and ca file and
 /// credentials.
@@ -46,13 +43,10 @@ pub async fn init_mongo_client(
         .credential(credentials)
         .build();
 
-    info!(target: PERSISTENCE_TARGET, "Connecting to mongodb");
+    info!("Connecting to mongodb");
     let client = Client::with_options(mongo_options)?;
     let result = client.list_databases().await?;
-    info!(
-      target: PERSISTENCE_TARGET,
-      "Connected to mongodb: {result:?}"
-    );
+    info!("Connected to mongodb: {result:?}");
     Ok(client.database(db_name))
 }
 

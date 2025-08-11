@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use std::fmt::{Display, Formatter};
 use tracing::debug;
-use user_persist::{
+use user_database::{
     types::{UpdateUser, User},
     Validate, ValidationErrors,
 };
@@ -148,7 +148,7 @@ impl<T: Hashable> IntoResponse for HashableVector<T> {
 #[cfg(test)]
 mod test {
     use super::IntoTypeWithHash;
-    use user_persist::types::{Email, Gender, User};
+    use user_database::types::{Email, Gender, User};
 
     #[test]
     fn test_hash_user() {

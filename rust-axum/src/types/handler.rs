@@ -9,13 +9,13 @@ use serde_json::json;
 use std::sync::Arc;
 use thiserror::Error;
 use tracing::{event, Level};
-use user_persist::persistence::PersistenceError;
+use user_database::database::DatabaseError;
 
 /// Common error type for handlers.
 #[derive(Debug, Error)]
 pub enum HandlerError {
-    #[error("Persistence error: `{0}`")]
-    PersistenceError(#[from] PersistenceError),
+    #[error("Database error: `{0}`")]
+    DatabaseError(#[from] DatabaseError),
     #[error("Resource not found")]
     ResourceNotFound,
 }

@@ -16,9 +16,9 @@ use http::{Response, StatusCode};
 use serde_json::{to_string, Value};
 use std::sync::Arc;
 use tracing::debug;
-use user_persist::{
-    mongo_persistence::MongoPersistence,
-    persistence::UserPersistence,
+use user_database::{
+    database::UserDatabase,
+    mongo_database::MongoDatabase,
     types::{UpdateUser, User, UserKey, UserSearch},
 };
 
@@ -32,7 +32,7 @@ pub async fn get_user<P>(
     claims: AdminAccess,
 ) -> HandlerResult<Json<User>>
 where
-    P: UserPersistence,
+    P: UserDatabase,
 {
     debug!("Received id: {id} with claims: {claims}");
     let user = db
@@ -52,7 +52,7 @@ pub async fn save_user<P>(
     ValidatingJson(user): ValidatingJson<User>,
 ) -> HandlerResult<Json<User>>
 where
-    P: UserPersistence,
+    P: UserDatabase,
 {
     debug!("saving user: {user}");
     let user = db.save_user(&user).await.map_err(HandlerError::from)?;
@@ -66,7 +66,7 @@ pub async fn update_user<P>(
     HashedValidatingJson(user): HashedValidatingJson<UpdateUser>,
 ) -> HandlerResult<StatusCode>
 where
-    P: UserPersistence,
+    P: UserDatabase,
 {
     debug!("updating user with {user}");
     db.update_user(&user)
@@ -82,7 +82,7 @@ pub async fn search_users<P>(
     ValidatingJson(user_search): ValidatingJson<UserSearch>,
 ) -> HandlerResult<Json<Vec<User>>>
 where
-    P: UserPersistence,
+    P: UserDatabase,
 {
     debug!("Searching for users with {user_search} and claims {claims}");
     let users = db
@@ -99,7 +99,7 @@ pub async fn delete_user<P>(
     _claims: AdminAccess,
 ) -> HandlerResult<StatusCode>
 where
-    P: UserPersistence,
+    P: UserDatabase,
 {
     debug!("Deleting user: {id}");
     db.remove_user(&id).await.map_err(HandlerError::from)?;
@@ -109,7 +109,7 @@ where
 /// Count users handler.
 pub async fn count_users<P>(db: Database<P>, claims: AdminAccess) -> HandlerResult<Json<Vec<Value>>>
 where
-    P: UserPersistence,
+    P: UserDatabase,
 {
     debug!("Claims: {claims}");
     let counts = db.count_genders().await?;
@@ -125,7 +125,7 @@ where
 
 /// Download users handler
 pub async fn download_users(
-    db: Extension<Arc<MongoPersistence>>,
+    db: Extension<Arc<MongoDatabase>>,
     claims: AdminAccess,
 ) -> HandlerResult<impl IntoResponse> {
     debug!("Streaming users for {claims}");

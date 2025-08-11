@@ -1,7 +1,7 @@
 use clap::Parser;
 use openssl::ssl::{SslAcceptor, SslAcceptorBuilder, SslFiletype, SslMethod};
 use std::path::PathBuf;
-use user_persist::MongoArgs;
+use user_database::MongoArgs;
 
 pub mod common;
 pub mod handlers;

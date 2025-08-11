@@ -10,7 +10,7 @@ edition = "2021"
 # [lib]
 
 [dependencies]
-user-persist = { path = "../user-persist" }
+user-database = { path = "../user-database" }
 thiserror = "2"
 serde = "1"
 mongodb = "3.2"

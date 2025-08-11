@@ -6,16 +6,16 @@ use actix_http::{ResponseBuilder, StatusCode};
 use actix_web::{get, post, put, web, Responder, Result};
 use std::sync::Arc;
 use tracing::{event, Level};
-use user_persist::{
-    persistence::UserPersistenceDynSafe,
+use user_database::{
+    database::UserDatabaseDynSafe,
     types::{UpdateUser, User, UserKey, UserSearch},
 };
 
-type Persist = web::Data<Arc<dyn UserPersistenceDynSafe>>;
+type Database = web::Data<Arc<dyn UserDatabaseDynSafe>>;
 
 #[get("{id}")]
 pub async fn get_user(
-    db: Persist,
+    db: Database,
     id: web::Path<UserKey>,
     claims: AdminAccess,
 ) -> Result<impl Responder, HandlerError> {
@@ -35,7 +35,7 @@ pub async fn get_user(
 #[post("")]
 pub async fn save_user(
     user: web::Json<User>,
-    db: Persist,
+    db: Database,
     _claims: UserAccess,
 ) -> Result<impl Responder, HandlerError> {
     event!(
@@ -49,7 +49,7 @@ pub async fn save_user(
 
 #[put("")]
 pub async fn update_user(
-    db: Persist,
+    db: Database,
     user: web::Json<UpdateUser>,
     _claims: AdminAccess,
 ) -> Result<impl Responder, HandlerError> {
@@ -65,7 +65,7 @@ pub async fn update_user(
 #[post("/search")]
 pub async fn search_users(
     user_search: web::Json<UserSearch>,
-    db: Persist,
+    db: Database,
     _claims: AdminAccess,
 ) -> Result<impl Responder, HandlerError> {
     event!(
@@ -78,7 +78,10 @@ pub async fn search_users(
 }
 
 #[get("counts")]
-pub async fn count_users(db: Persist, claims: AdminAccess) -> Result<impl Responder, HandlerError> {
+pub async fn count_users(
+    db: Database,
+    claims: AdminAccess,
+) -> Result<impl Responder, HandlerError> {
     event!(target: USER_MS_TARGET, Level::DEBUG, "Claims: {claims:?}");
     let counts = db.count_genders().await?;
     event!(

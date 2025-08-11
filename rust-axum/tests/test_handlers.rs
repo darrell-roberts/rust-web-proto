@@ -1,6 +1,6 @@
 //! Integration tests for routes.
 use crate::common::{
-    add_jwt, app, body_as, body_as_str, dump_result, test_persist::test_user, MIME_JSON,
+    add_jwt, app, body_as, body_as_str, dump_result, test_database::test_user, MIME_JSON,
     TEST_TARGET,
 };
 use axum::{
@@ -15,7 +15,7 @@ use rust_axum::{security::hashing::HashedUser, types::jwt::Role};
 use serde_json::{from_str, json, to_string, Value};
 use tower::ServiceExt;
 use tracing::debug;
-use user_persist::types::{Email, Gender, UpdateUser, User, UserKey, UserSearch};
+use user_database::types::{Email, Gender, UpdateUser, User, UserKey, UserSearch};
 
 mod common;
 

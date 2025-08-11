@@ -8,7 +8,7 @@ use std::{
     fmt::{self, Display},
     path::PathBuf,
 };
-use user_persist::MongoArgs;
+use user_database::MongoArgs;
 
 #[derive(Parser, Debug, Clone)]
 #[clap(about, version, author)]
