@@ -5,65 +5,83 @@ use axum::{
     http::Request,
     response::{IntoResponse, Response},
 };
-use futures::{future::BoxFuture, TryFutureExt as _};
+use futures::future::BoxFuture;
 use http::StatusCode;
 use hyper::body::Bytes;
+use serde::Deserialize;
 use std::{
+    marker::PhantomData,
     sync::Arc,
     task::{Context, Poll},
 };
-use tower::Service;
-use tower_layer::{layer_fn, LayerFn};
+use tower::{Layer, Service};
 use tracing::error;
-use user_database::types::User;
-
-/// Deserialize the response and call its hash method.
-pub fn hash_user(hash_prefix: &str, bytes: Bytes) -> Bytes {
-    match serde_json::from_slice(&bytes).map(|b: User| b.hash(hash_prefix)) {
-        Ok(hashed) => Bytes::from(serde_json::to_vec(&hashed).unwrap()),
-        Err(e) => {
-            error!("Failed to hash response {e}");
-            bytes
-        }
-    }
-}
-/// Deserialize the response and call its hash method.
-pub fn hash_users(hash_prefix: &str, bytes: Bytes) -> Bytes {
-    match serde_json::from_slice(&bytes).map(|v: Vec<User>| {
-        v.into_iter()
-            .map(|u| u.hash(hash_prefix))
-            .collect::<Vec<_>>()
-    }) {
-        Ok(hashed) => Bytes::from(serde_json::to_vec(&hashed).unwrap()),
-        Err(e) => {
-            error!("Failed to hash response {e}");
-            bytes
-        }
-    }
-}
 
 /// Middleware for adding hashes to successful responses.
 #[derive(Clone, Copy)]
-pub struct HashingMiddleware<S, F> {
+pub struct HashingService<S, R> {
     pub inner: S,
-    pub hash_fn: F,
+    _phantom: PhantomData<R>,
 }
 
-impl<S, F> HashingMiddleware<S, F> {
-    /// Create a hashing middleware with a provided hashing transformation function.
-    pub fn new(hash_fn: F) -> LayerFn<impl Fn(S) -> HashingMiddleware<S, F> + Clone + 'static>
-    where
-        F: FnOnce(&str, Bytes) -> Bytes + Clone + Copy + 'static + Send,
-    {
-        layer_fn(move |inner| HashingMiddleware { inner, hash_fn })
+/// Hashing middleware layer.
+#[derive(Clone, Copy)]
+pub struct HashingLayer<R> {
+    _phantom: PhantomData<R>,
+}
+
+impl<S, R> Layer<S> for HashingLayer<R> {
+    type Service = HashingService<S, R>;
+
+    fn layer(&self, inner: S) -> Self::Service {
+        HashingService {
+            inner,
+            _phantom: PhantomData,
+        }
     }
 }
 
-impl<S, F> Service<Request<Body>> for HashingMiddleware<S, F>
+/// Create a hashing middleware that hashes `R` in the response body.
+pub fn hashing_layer<R>() -> HashingLayer<R>
+where
+    R: IntoTypeWithHash + Send + 'static,
+{
+    HashingLayer {
+        _phantom: PhantomData,
+    }
+}
+
+/// Apply hashing transformation on the body response type.
+async fn transform_body<T>(hash_prefix: &str, response: Response) -> Response
+where
+    for<'a> T: IntoTypeWithHash + Deserialize<'a> + 'static,
+{
+    match to_bytes(response.into_body(), usize::MAX).await {
+        Ok(bytes) => match serde_json::from_slice(&bytes).map(|b: T| b.hash(hash_prefix)) {
+            Ok(hashed) => {
+                Body::from(Bytes::from(serde_json::to_vec(&hashed).unwrap())).into_response()
+            }
+            Err(e) => {
+                error!("Failed to hash response {e}");
+                (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    "Failed to deserialize body for hashing",
+                )
+                    .into_response()
+            }
+        },
+        Err(err) => {
+            error!("Failed to hash body {err}");
+            (StatusCode::INTERNAL_SERVER_ERROR, "Hashing failed").into_response()
+        }
+    }
+}
+
+impl<S, R> Service<Request<Body>> for HashingService<S, R>
 where
     S: Service<Request<Body>, Response = Response> + Send + 'static,
     S::Future: Send + 'static,
-    F: FnOnce(&str, Bytes) -> Bytes + Clone + Copy + 'static + Send,
+    for<'a> R: IntoTypeWithHash + Deserialize<'a> + Send + 'static,
 {
     type Response = S::Response;
     type Error = S::Error;
@@ -80,21 +98,17 @@ where
             .expect("Did you forget to add Arc<AppConfig> to state?")
             .clone();
 
-        let hash_fn = self.hash_fn;
+        let fut = self.inner.call(req);
 
-        Box::pin(self.inner.call(req).and_then(move |res| async move {
+        Box::pin(async move {
+            let res = fut.await?;
             Ok(if res.status().is_success() {
                 // Apply hashing function.
-                match to_bytes(res.into_body(), usize::MAX).await {
-                    Ok(bytes) => Body::from(hash_fn(config.hash_prefix(), bytes)).into_response(),
-                    Err(_err) => {
-                        (StatusCode::INTERNAL_SERVER_ERROR, "Hashing failed").into_response()
-                    }
-                }
+                transform_body::<R>(config.hash_prefix(), res).await
             } else {
                 // No hashing.
                 res
             })
-        }))
+        })
     }
 }
