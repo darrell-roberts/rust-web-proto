@@ -42,18 +42,19 @@ where
     for<'a> T: IntoTypeWithHash + Deserialize<'a> + 'static,
 {
     match to_bytes(response.into_body(), usize::MAX).await {
-        Ok(bytes) => {
-            let body = Body::from(
-                match serde_json::from_slice(&bytes).map(|b: T| b.hash(hash_prefix)) {
-                    Ok(hashed) => Bytes::from(serde_json::to_vec(&hashed).unwrap()),
-                    Err(e) => {
-                        error!("Failed to hash response {e}");
-                        bytes
-                    }
-                },
-            );
-            body.into_response()
-        }
+        Ok(bytes) => match serde_json::from_slice(&bytes).map(|b: T| b.hash(hash_prefix)) {
+            Ok(hashed) => {
+                Body::from(Bytes::from(serde_json::to_vec(&hashed).unwrap())).into_response()
+            }
+            Err(e) => {
+                error!("Failed to hash response {e}");
+                (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    "Failed to deserialize body for hashing",
+                )
+                    .into_response()
+            }
+        },
         Err(err) => {
             error!("Failed to hash body {err}");
             (StatusCode::INTERNAL_SERVER_ERROR, "Hashing failed").into_response()
