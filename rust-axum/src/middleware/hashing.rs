@@ -25,7 +25,7 @@ pub struct HashingMiddleware<S, R> {
     _phantom: PhantomData<R>,
 }
 
-/// Create a hashing middleware with a provided hashing transformation function.
+/// Create a hashing middleware that hashes `R` in the response body.
 pub fn hashing_middleware<R, S>() -> LayerFn<impl Fn(S) -> HashingMiddleware<S, R> + Clone + 'static>
 where
     R: IntoTypeWithHash + Send + 'static,
@@ -64,9 +64,9 @@ where
 
 impl<S, R> Service<Request<Body>> for HashingMiddleware<S, R>
 where
-    S: Service<Request<Body>, Response = Response> + Send + Sync + 'static,
+    S: Service<Request<Body>, Response = Response> + Send + 'static,
     S::Future: Send + 'static,
-    for<'a> R: IntoTypeWithHash + Deserialize<'a> + Send + 'static + Sync,
+    for<'a> R: IntoTypeWithHash + Deserialize<'a> + Send + 'static,
 {
     type Response = S::Response;
     type Error = S::Error;
