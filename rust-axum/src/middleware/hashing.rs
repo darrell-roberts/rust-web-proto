@@ -14,26 +14,41 @@ use std::{
     sync::Arc,
     task::{Context, Poll},
 };
-use tower::Service;
-use tower_layer::{layer_fn, LayerFn};
+use tower::{Layer, Service};
 use tracing::error;
 
 /// Middleware for adding hashes to successful responses.
 #[derive(Clone, Copy)]
-pub struct HashingMiddleware<S, R> {
+pub struct HashingService<S, R> {
     pub inner: S,
     _phantom: PhantomData<R>,
 }
 
+/// Hashing middleware layer.
+#[derive(Clone, Copy)]
+pub struct HashingLayer<R> {
+    _phantom: PhantomData<R>,
+}
+
+impl<S, R> Layer<S> for HashingLayer<R> {
+    type Service = HashingService<S, R>;
+
+    fn layer(&self, inner: S) -> Self::Service {
+        HashingService {
+            inner,
+            _phantom: PhantomData,
+        }
+    }
+}
+
 /// Create a hashing middleware that hashes `R` in the response body.
-pub fn hashing_middleware<R, S>() -> LayerFn<impl Fn(S) -> HashingMiddleware<S, R> + Clone + 'static>
+pub fn hashing_layer<R>() -> HashingLayer<R>
 where
     R: IntoTypeWithHash + Send + 'static,
 {
-    layer_fn(move |inner| HashingMiddleware {
-        inner,
+    HashingLayer {
         _phantom: PhantomData,
-    })
+    }
 }
 
 /// Apply hashing transformation on the body response type.
@@ -62,7 +77,7 @@ where
     }
 }
 
-impl<S, R> Service<Request<Body>> for HashingMiddleware<S, R>
+impl<S, R> Service<Request<Body>> for HashingService<S, R>
 where
     S: Service<Request<Body>, Response = Response> + Send + 'static,
     S::Future: Send + 'static,
