@@ -1,11 +1,9 @@
-/*!
-This module provides data access to a a mongodb user collection.
-*/
+//! This module provides data access to a a mongodb user collection.
 use crate::{
+    database::{DatabaseResult, UserDatabase},
     init_mongo_client,
-    persistence::{PersistenceResult, UserPersistence},
     types::{Email, Gender, UpdateUser, User, UserKey, UserSearch},
-    MongoArgs, PERSISTENCE_TARGET,
+    MongoArgs,
 };
 use futures::{
     stream::{Stream, TryStreamExt},
@@ -24,27 +22,27 @@ use tracing::{debug, instrument};
 
 const COLLECTION_NAME: &str = "users";
 
-/// An implementation of UserPersistence for MongoDB.
+/// An implementation of UserDatabase for MongoDB.
 #[derive(Debug, Clone)]
-pub struct MongoPersistence(Database);
+pub struct MongoDatabase(Database);
 
-impl Deref for MongoPersistence {
+impl Deref for MongoDatabase {
     type Target = Database;
     fn deref(&self) -> &Self::Target {
         &self.0
     }
 }
 
-impl MongoPersistence {
-    /// Creates a new MongoPersistence API.
-    pub async fn new(options: MongoArgs) -> PersistenceResult<Self> {
+impl MongoDatabase {
+    /// Creates a new MongoDatabase API.
+    pub async fn new(options: MongoArgs) -> DatabaseResult<Self> {
         let db = init_mongo_client(options).await?;
         Ok(Self(db))
     }
 }
 
-impl UserPersistence for MongoPersistence {
-    async fn get_user(&self, id: &UserKey) -> PersistenceResult<Option<User>> {
+impl UserDatabase for MongoDatabase {
+    async fn get_user(&self, id: &UserKey) -> DatabaseResult<Option<User>> {
         let user = self
             .user_collection()
             .find_one(doc! {"_id": ObjectId::try_from(id)?})
@@ -54,7 +52,7 @@ impl UserPersistence for MongoPersistence {
         Ok(user)
     }
 
-    async fn save_user(&self, user: &User) -> PersistenceResult<User> {
+    async fn save_user(&self, user: &User) -> DatabaseResult<User> {
         let mongo_user = MongoUser::from(user.to_owned());
 
         let InsertOneResult { inserted_id, .. } =
@@ -71,36 +69,31 @@ impl UserPersistence for MongoPersistence {
         })
     }
 
-    async fn update_user(&self, user: &UpdateUser) -> PersistenceResult<()> {
+    async fn update_user(&self, user: &UpdateUser) -> DatabaseResult<()> {
         let query = doc! {"_id": ObjectId::try_from(&user.id)?};
         let update_fields = doc! {"name": &user.name, "age": &user.age, "email": &user.email};
         let update = doc! {"$set": update_fields};
 
         let updated = self.user_collection().update_one(query, update).await?;
 
-        debug!(target: PERSISTENCE_TARGET, "update result: {updated:?}",);
+        debug!("update result: {updated:?}",);
 
         Ok(())
     }
 
-    async fn remove_user(&self, key: &UserKey) -> PersistenceResult<()> {
+    async fn remove_user(&self, key: &UserKey) -> DatabaseResult<()> {
         let result = self
             .user_collection()
             .delete_one(doc! {
               "_id": ObjectId::try_from(key)?
             })
             .await?;
-        debug!(target: PERSISTENCE_TARGET, "delete result: {result:?}");
+        debug!("delete result: {result:?}");
         Ok(())
     }
 
-    #[instrument(
-        skip_all,
-        level = "debug",
-        target = "persistence",
-        name = "search-span"
-    )]
-    async fn search_users(&self, user_search: &UserSearch) -> PersistenceResult<Vec<User>> {
+    #[instrument(skip_all, level = "debug", target = "database", name = "search-span")]
+    async fn search_users(&self, user_search: &UserSearch) -> DatabaseResult<Vec<User>> {
         let search = doc! { "email": &user_search.email, "gender": &user_search.gender,
             "name": &user_search.name
         };
@@ -110,10 +103,7 @@ impl UserPersistence for MongoPersistence {
             .filter(|(_, value)| value != &Bson::Null)
             .collect::<Document>();
 
-        debug!(
-          target: PERSISTENCE_TARGET,
-          "mongo search query: {filtered_null}",
-        );
+        debug!("mongo search query: {filtered_null}",);
 
         let result = self
             .user_collection()
@@ -128,7 +118,7 @@ impl UserPersistence for MongoPersistence {
         Ok(result)
     }
 
-    async fn count_genders(&self) -> PersistenceResult<Vec<Value>> {
+    async fn count_genders(&self) -> DatabaseResult<Vec<Value>> {
         let pipeline = vec![doc! {
           "$group": {"_id": "$gender", "count": {"$count": {}}}
         }];
@@ -148,15 +138,15 @@ impl UserPersistence for MongoPersistence {
     }
 }
 
-impl MongoPersistence {
+impl MongoDatabase {
     /// Get the user collection.
     pub(crate) fn user_collection(&self) -> Collection<MongoUser> {
         self.collection::<MongoUser>(COLLECTION_NAME)
     }
 
-    /// Extra capabilities outside of the Persistence trait.
+    /// Extra capabilities outside of the Database trait.
     /// Download all users from the mongodb collection.
-    pub async fn download(&self) -> PersistenceResult<impl Stream<Item = MongoResult<User>>> {
+    pub async fn download(&self) -> DatabaseResult<impl Stream<Item = MongoResult<User>>> {
         Ok(self
             .user_collection()
             .find(doc! {})

@@ -4,12 +4,12 @@ use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 use tracing::{event, Level};
-use user_persist::persistence::PersistenceError;
+use user_database::database::DatabaseError;
 
 #[derive(Debug, Error)]
 pub enum HandlerError {
-    #[error("Persistence error")]
-    PersistenceError(#[from] PersistenceError),
+    #[error("Database error")]
+    DatabaseError(#[from] DatabaseError),
 }
 
 impl ResponseError for HandlerError {

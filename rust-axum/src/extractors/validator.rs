@@ -11,7 +11,7 @@ use serde_json::{json, to_value};
 use std::ops::Deref;
 use thiserror::Error;
 use tracing::error;
-use user_persist::{Validate, ValidationErrors};
+use user_database::{Validate, ValidationErrors};
 
 /// An extractor that adds value validators to a Json validator.
 #[derive(Debug, Clone, Copy, Default)]

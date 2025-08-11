@@ -10,9 +10,9 @@ use std::{
 };
 use tracing::{event, Level};
 use tracing_subscriber::EnvFilter;
-use user_persist::persistence::PersistenceResult;
-use user_persist::{
-    persistence::{PersistenceError, UserPersistence},
+use user_database::database::DatabaseResult;
+use user_database::{
+    database::{DatabaseError, UserDatabase},
     types::{Email, Gender, UpdateUser, User, UserKey, UserSearch},
 };
 use warp::{hyper::body::Bytes, Filter, Reply};
@@ -32,7 +32,7 @@ fn init_log() {
 }
 
 #[derive(Debug, Clone)]
-pub struct TestPersistence;
+pub struct TestDatabase;
 
 fn test_user() -> User {
     User {
@@ -44,10 +44,10 @@ fn test_user() -> User {
     }
 }
 
-// A mock persistence for testing.
+// A mock database for testing.
 #[async_trait]
-impl UserPersistence for TestPersistence {
-    async fn get_user(&self, id: &UserKey) -> Result<Option<User>, PersistenceError> {
+impl UserDatabase for TestDatabase {
+    async fn get_user(&self, id: &UserKey) -> Result<Option<User>, DatabaseError> {
         if id.0 == "61c0d1954c6b974ca7000000" {
             Ok(Some(test_user()))
         } else {
@@ -55,30 +55,30 @@ impl UserPersistence for TestPersistence {
         }
     }
 
-    async fn save_user(&self, user: &User) -> Result<User, PersistenceError> {
+    async fn save_user(&self, user: &User) -> Result<User, DatabaseError> {
         Ok(user.clone())
     }
 
-    async fn update_user(&self, _user: &UpdateUser) -> Result<(), PersistenceError> {
+    async fn update_user(&self, _user: &UpdateUser) -> Result<(), DatabaseError> {
         Ok(())
     }
 
-    async fn remove_user(&self, _user: &UserKey) -> PersistenceResult<()> {
+    async fn remove_user(&self, _user: &UserKey) -> DatabaseResult<()> {
         todo!()
     }
 
-    async fn search_users(&self, _user_search: &UserSearch) -> Result<Vec<User>, PersistenceError> {
+    async fn search_users(&self, _user_search: &UserSearch) -> Result<Vec<User>, DatabaseError> {
         Ok(vec![test_user()])
     }
 
-    async fn count_genders(&self) -> Result<Vec<Value>, PersistenceError> {
-        Err(PersistenceError::TestError)
+    async fn count_genders(&self) -> Result<Vec<Value>, DatabaseError> {
+        Err(DatabaseError::TestError)
     }
 }
 
 fn test_user_filter() -> impl Filter<Extract = impl Reply, Error = Infallible> + Clone {
     init_log();
-    let test_db = Arc::new(TestPersistence);
+    let test_db = Arc::new(TestDatabase);
     user(test_db)
 }
 

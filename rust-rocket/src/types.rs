@@ -10,7 +10,7 @@ use rocket::{
 use std::io::Cursor;
 use thiserror::Error;
 use tracing::{event, Level};
-use user_persist::{persistence::PersistenceError, types::UserKey, Validate};
+use user_database::{database::DatabaseError, types::UserKey, Validate};
 
 pub const USER_MS_TARGET: &str = "user-ms";
 
@@ -41,11 +41,11 @@ pub struct ErrorResponder<'a> {
     message: String,
 }
 
-impl From<PersistenceError> for ErrorResponder<'static> {
-    fn from(err: PersistenceError) -> Self {
+impl From<DatabaseError> for ErrorResponder<'static> {
+    fn from(err: DatabaseError) -> Self {
         ErrorResponder {
             message: err.to_string(),
-            label: "persistence.error",
+            label: "database.error",
         }
     }
 }

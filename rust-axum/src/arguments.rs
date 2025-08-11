@@ -2,7 +2,7 @@
 use clap::Parser;
 use jsonwebtoken::{DecodingKey, EncodingKey};
 use std::path::PathBuf;
-use user_persist::MongoArgs;
+use user_database::MongoArgs;
 
 /// Command line arguments.
 #[derive(Parser, Clone)]

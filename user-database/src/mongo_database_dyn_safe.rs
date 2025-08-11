@@ -5,10 +5,9 @@ This implements the trait via async_trait. This is needed for actix-web and rock
 support generics in the routes.
 */
 use crate::{
-    mongo_persistence::{MongoPersistence, MongoUser},
-    persistence::{PersistenceResult, UserPersistenceDynSafe},
+    database::{DatabaseResult, UserDatabaseDynSafe},
+    mongo_database::{MongoDatabase, MongoUser},
     types::{UpdateUser, User, UserKey, UserSearch},
-    PERSISTENCE_TARGET,
 };
 use async_trait::async_trait;
 use futures::stream::TryStreamExt;
@@ -22,8 +21,8 @@ use tracing::{debug, instrument};
 const COLLECTION_NAME: &str = "users";
 
 #[async_trait]
-impl UserPersistenceDynSafe for MongoPersistence {
-    async fn get_user(&self, id: &UserKey) -> PersistenceResult<Option<User>> {
+impl UserDatabaseDynSafe for MongoDatabase {
+    async fn get_user(&self, id: &UserKey) -> DatabaseResult<Option<User>> {
         let user = self
             .user_collection()
             .find_one(doc! {"_id": ObjectId::try_from(id)?})
@@ -33,7 +32,7 @@ impl UserPersistenceDynSafe for MongoPersistence {
         Ok(user)
     }
 
-    async fn save_user(&self, user: &User) -> PersistenceResult<User> {
+    async fn save_user(&self, user: &User) -> DatabaseResult<User> {
         let mongo_user = MongoUser::from(user.to_owned());
 
         let InsertOneResult { inserted_id, .. } =
@@ -50,36 +49,31 @@ impl UserPersistenceDynSafe for MongoPersistence {
         })
     }
 
-    async fn update_user(&self, user: &UpdateUser) -> PersistenceResult<()> {
+    async fn update_user(&self, user: &UpdateUser) -> DatabaseResult<()> {
         let query = doc! {"_id": ObjectId::try_from(&user.id)?};
         let update_fields = doc! {"name": &user.name, "age": &user.age, "email": &user.email};
         let update = doc! {"$set": update_fields};
 
         let updated = self.user_collection().update_one(query, update).await?;
 
-        debug!(target: PERSISTENCE_TARGET, "update result: {updated:?}",);
+        debug!("update result: {updated:?}",);
 
         Ok(())
     }
 
-    async fn remove_user(&self, key: &UserKey) -> PersistenceResult<()> {
+    async fn remove_user(&self, key: &UserKey) -> DatabaseResult<()> {
         let result = self
             .user_collection()
             .delete_one(doc! {
               "_id": ObjectId::try_from(key)?
             })
             .await?;
-        debug!(target: PERSISTENCE_TARGET, "delete result: {result:?}");
+        debug!("delete result: {result:?}");
         Ok(())
     }
 
-    #[instrument(
-        skip_all,
-        level = "debug",
-        target = "persistence",
-        name = "search-span"
-    )]
-    async fn search_users(&self, user_search: &UserSearch) -> PersistenceResult<Vec<User>> {
+    #[instrument(skip_all, level = "debug", target = "database", name = "search-span")]
+    async fn search_users(&self, user_search: &UserSearch) -> DatabaseResult<Vec<User>> {
         let search = doc! { "email": &user_search.email, "gender": &user_search.gender,
             "name": &user_search.name
         };
@@ -89,10 +83,7 @@ impl UserPersistenceDynSafe for MongoPersistence {
             .filter(|(_, value)| value != &Bson::Null)
             .collect::<Document>();
 
-        debug!(
-          target: PERSISTENCE_TARGET,
-          "mongo search query: {filtered_null}",
-        );
+        debug!("mongo search query: {filtered_null}");
 
         let result = self
             .user_collection()
@@ -107,7 +98,7 @@ impl UserPersistenceDynSafe for MongoPersistence {
         Ok(result)
     }
 
-    async fn count_genders(&self) -> PersistenceResult<Vec<Value>> {
+    async fn count_genders(&self) -> DatabaseResult<Vec<Value>> {
         let pipeline = vec![doc! {
           "$group": {"_id": "$gender", "count": {"$count": {}}}
         }];

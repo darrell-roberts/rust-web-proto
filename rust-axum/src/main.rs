@@ -8,7 +8,7 @@ use rust_axum::{
 };
 use std::{error::Error, net::SocketAddr, sync::Arc};
 use tracing_subscriber::EnvFilter;
-use user_persist::mongo_persistence::MongoPersistence;
+use user_database::mongo_database::MongoDatabase;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
@@ -29,9 +29,9 @@ async fn main() -> Result<(), Box<dyn Error>> {
     )
     .await?;
 
-    let mongo_persist = Arc::new(MongoPersistence::new(program_opts.mongo_opts()).await?);
+    let database = Arc::new(MongoDatabase::new(program_opts.mongo_opts()).await?);
 
-    let app = build_app(mongo_persist.clone(), app_config).layer(Extension(mongo_persist));
+    let app = build_app(database.clone(), app_config).layer(Extension(database));
 
     let addr = SocketAddr::from(([0, 0, 0, 0], 8443));
     axum_server::bind_rustls(addr, config)

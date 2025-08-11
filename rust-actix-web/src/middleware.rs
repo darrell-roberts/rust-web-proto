@@ -108,7 +108,7 @@ pub enum JsonValidationError {
     #[error("Validation failed")]
     ValidationFailed {
         #[from]
-        source: user_persist::ValidationErrors,
+        source: user_database::ValidationErrors,
     },
     #[error("Parsing failed")]
     ParseError {

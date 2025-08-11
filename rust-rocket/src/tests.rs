@@ -17,16 +17,15 @@ use std::sync::{Arc, Once};
 use thiserror::Error;
 use tracing::{event, Level};
 use tracing_subscriber::EnvFilter;
-use user_persist::persistence::{PersistenceResult, UserPersistenceDynSafe};
-use user_persist::{
-    persistence::PersistenceError,
+use user_database::{
+    database::{DatabaseError, DatabaseResult, UserDatabaseDynSafe},
     types::{Email, Gender, UpdateUser, User, UserKey, UserSearch},
 };
 
 const USER_PATH: &str = "/api/v1/user";
 
 fn get_rocket() -> Rocket<Build> {
-    let mongo_pesist: Arc<dyn UserPersistenceDynSafe> = Arc::new(TestPersistence);
+    let mongo_pesist: Arc<dyn UserDatabaseDynSafe> = Arc::new(TestDatabase);
     rocket::build()
         .manage(mongo_pesist)
         .attach(fairings::RequestIdFairing)
@@ -75,7 +74,7 @@ enum TestError {
 type TestResult<T> = Result<T, TestError>;
 
 #[derive(Debug, Clone)]
-pub struct TestPersistence;
+pub struct TestDatabase;
 
 fn test_user() -> User {
     User {
@@ -87,10 +86,10 @@ fn test_user() -> User {
     }
 }
 
-// A mock persistence for testing.
+// A mock database for testing.
 #[async_trait]
-impl UserPersistenceDynSafe for TestPersistence {
-    async fn get_user(&self, id: &UserKey) -> Result<Option<User>, PersistenceError> {
+impl UserDatabaseDynSafe for TestDatabase {
+    async fn get_user(&self, id: &UserKey) -> Result<Option<User>, DatabaseError> {
         if id.0 == "61c0d1954c6b974ca7000000" {
             Ok(Some(test_user()))
         } else {
@@ -98,23 +97,23 @@ impl UserPersistenceDynSafe for TestPersistence {
         }
     }
 
-    async fn save_user(&self, user: &User) -> Result<User, PersistenceError> {
+    async fn save_user(&self, user: &User) -> Result<User, DatabaseError> {
         Ok(user.clone())
     }
 
-    async fn update_user(&self, _user: &UpdateUser) -> Result<(), PersistenceError> {
+    async fn update_user(&self, _user: &UpdateUser) -> Result<(), DatabaseError> {
         Ok(())
     }
 
-    async fn remove_user(&self, _user: &UserKey) -> PersistenceResult<()> {
+    async fn remove_user(&self, _user: &UserKey) -> DatabaseResult<()> {
         todo!()
     }
 
-    async fn search_users(&self, _user_search: &UserSearch) -> Result<Vec<User>, PersistenceError> {
+    async fn search_users(&self, _user_search: &UserSearch) -> Result<Vec<User>, DatabaseError> {
         Ok(vec![test_user()])
     }
 
-    async fn count_genders(&self) -> Result<Vec<Value>, PersistenceError> {
+    async fn count_genders(&self) -> Result<Vec<Value>, DatabaseError> {
         Ok(vec![
             json! (   {
                 "_id": "Male",

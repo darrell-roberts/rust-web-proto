@@ -7,22 +7,22 @@ use rocket::{response::stream::ByteStream, serde::json::Json, State};
 use serde_json::Value;
 use std::sync::Arc;
 use tracing::{event, Level};
-use user_persist::{
-    mongo_persistence::MongoPersistence,
-    persistence::UserPersistenceDynSafe,
+use user_database::{
+    database::UserDatabaseDynSafe,
+    mongo_database::MongoDatabase,
     types::{UpdateUser, User, UserSearch},
 };
 
 type JsonUser = Json<User>;
 type HandlerResult<T> = Result<T, ErrorResponder<'static>>;
-type UserPersist = State<Arc<dyn UserPersistenceDynSafe>>;
+type UserDatabase = State<Arc<dyn UserDatabaseDynSafe>>;
 
 // Gets a single user document by primary key.
 #[get("/<id>")]
 pub async fn get_user(
     id: UserKeyReq,
     req_id: RequestId,
-    db: &UserPersist,
+    db: &UserDatabase,
     role: AdminAccess,
 ) -> HandlerResult<Option<JsonUser>> {
     event!(target: USER_MS_TARGET, Level::DEBUG, %req_id, "claims: {role:?}");
@@ -36,7 +36,7 @@ pub async fn get_user(
 pub async fn save_user(
     user: JsonValidation<User>,
     req_id: RequestId,
-    db: &UserPersist,
+    db: &UserDatabase,
     _role: UserAccess,
 ) -> HandlerResult<JsonUser> {
     let JsonValidation(u) = user;
@@ -48,7 +48,7 @@ pub async fn save_user(
 // Updates a user with the UpdateUser criteria.
 #[put("/", format = "json", data = "<user>")]
 pub async fn update_user(
-    db: &UserPersist,
+    db: &UserDatabase,
     req_id: RequestId,
     user: JsonValidation<UpdateUser>,
     #[allow(unused)] role: AdminAccess,
@@ -63,7 +63,7 @@ pub async fn update_user(
 // and summarize counts.
 #[get("/counts")]
 pub async fn count_genders(
-    db: &UserPersist,
+    db: &UserDatabase,
     req_id: RequestId,
     #[allow(unused)] role: UserAccess,
 ) -> HandlerResult<Json<Vec<Value>>> {
@@ -78,7 +78,7 @@ pub async fn count_genders(
 pub async fn find_users(
     user_search: JsonValidation<UserSearch>,
     req_id: RequestId,
-    db: &UserPersist,
+    db: &UserDatabase,
     role: AdminAccess,
 ) -> HandlerResult<Json<Vec<User>>> {
     let search = user_search.0;
@@ -91,7 +91,7 @@ pub async fn find_users(
 // Stream all users as json.
 #[get("/download")]
 pub async fn download(
-    db: &State<MongoPersistence>,
+    db: &State<MongoDatabase>,
     req_id: RequestId,
     #[allow(unused)] role: AdminAccess,
 ) -> HandlerResult<ByteStream![Vec<u8>]> {

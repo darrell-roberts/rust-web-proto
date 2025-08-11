@@ -15,7 +15,7 @@ use std::{
 use tower::Service;
 use tower_layer::{layer_fn, LayerFn};
 use tracing::error;
-use user_persist::types::User;
+use user_database::types::User;
 
 /// Deserialize the response and call its hash method.
 pub fn hash_user(hash_prefix: &str, bytes: Bytes) -> Bytes {

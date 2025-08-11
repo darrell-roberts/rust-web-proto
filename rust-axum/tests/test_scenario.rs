@@ -6,26 +6,26 @@ use axum::{
         Method, Request, StatusCode,
     },
 };
-use common::{add_jwt, app, body_as, test_persist::TestPersistence, MIME_JSON, TEST_TARGET};
+use common::{add_jwt, app, body_as, test_database::TestDatabase, MIME_JSON, TEST_TARGET};
 use rust_axum::{security::hashing::HashedUser, types::jwt::Role};
 use std::sync::Arc;
 use tower::ServiceExt;
 use tracing::debug;
-use user_persist::types::{UpdateUser, User};
+use user_database::types::{UpdateUser, User};
 
 mod common;
 
 /// Runs a test scenario. A user is saved/updated/fetched/deleted/fetched.
 #[tokio::test]
 async fn test_scenario() {
-    let persist = Arc::new(TestPersistence::new());
+    let database = Arc::new(TestDatabase::new());
 
-    let user = create_user(persist.clone()).await;
-    update_user(persist.clone(), &user).await;
-    get_user(persist.clone(), &user).await;
-    delete_user(persist.clone(), &user).await;
+    let user = create_user(database.clone()).await;
+    update_user(database.clone(), &user).await;
+    get_user(database.clone(), &user).await;
+    delete_user(database.clone(), &user).await;
 
-    let response = app(Some(persist))
+    let response = app(Some(database))
         .oneshot(
             Request::builder()
                 .uri(format!(
@@ -42,7 +42,7 @@ async fn test_scenario() {
     assert_eq!(response.status(), StatusCode::NOT_FOUND);
 }
 
-async fn create_user(persist: Arc<TestPersistence>) -> HashedUser {
+async fn create_user(database: Arc<TestDatabase>) -> HashedUser {
     let json_user = r#"{
     "name": "Scenario User",
     "email": "scenario@test.com",
@@ -50,7 +50,7 @@ async fn create_user(persist: Arc<TestPersistence>) -> HashedUser {
     "gender": "Female"
   }"#;
 
-    let save_response = app(Some(persist))
+    let save_response = app(Some(database))
         .oneshot(
             Request::builder()
                 .uri("/api/v1/user")
@@ -70,7 +70,7 @@ async fn create_user(persist: Arc<TestPersistence>) -> HashedUser {
     saved_user
 }
 
-async fn update_user(persist: Arc<TestPersistence>, user: &HashedUser) {
+async fn update_user(database: Arc<TestDatabase>, user: &HashedUser) {
     let update_user = UpdateUser {
         id: user.user.id.clone().expect("No user id"),
         name: user.user.name.clone(),
@@ -79,7 +79,7 @@ async fn update_user(persist: Arc<TestPersistence>, user: &HashedUser) {
         email: user.user.email.clone(),
     };
 
-    let update_response = app(Some(persist))
+    let update_response = app(Some(database))
         .oneshot(
             Request::builder()
                 .uri("/api/v1/user")
@@ -97,8 +97,8 @@ async fn update_user(persist: Arc<TestPersistence>, user: &HashedUser) {
     assert_eq!(update_response.status(), StatusCode::OK);
 }
 
-async fn get_user(persist: Arc<TestPersistence>, user: &HashedUser) {
-    let response = app(Some(persist))
+async fn get_user(database: Arc<TestDatabase>, user: &HashedUser) {
+    let response = app(Some(database))
         .oneshot(
             Request::builder()
                 .uri(format!(
@@ -117,8 +117,8 @@ async fn get_user(persist: Arc<TestPersistence>, user: &HashedUser) {
     assert_eq!(fetched_user.age, 150);
 }
 
-async fn delete_user(persist: Arc<TestPersistence>, user: &HashedUser) {
-    let response = app(Some(persist))
+async fn delete_user(database: Arc<TestDatabase>, user: &HashedUser) {
+    let response = app(Some(database))
         .oneshot(
             Request::builder()
                 .uri(format!(

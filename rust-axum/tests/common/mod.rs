@@ -8,11 +8,11 @@ use rust_axum::{
 };
 use serde::Deserialize;
 use std::sync::{Arc, Once};
-use test_persist::TestPersistence;
+use test_database::TestDatabase;
 use tracing::debug;
 use tracing_subscriber::EnvFilter;
 
-pub mod test_persist;
+pub mod test_database;
 
 static INIT: Once = Once::new();
 pub const TEST_TARGET: &str = "test";
@@ -31,13 +31,13 @@ fn init_log() {
 static SECRET: &[u8] = "TEST_SECRET".as_bytes();
 
 /// Build test Router.
-pub fn app(persistence: Option<Arc<TestPersistence>>) -> Router {
+pub fn app(database: Option<Arc<TestDatabase>>) -> Router {
     init_log();
-    let persist = match persistence {
+    let database = match database {
         Some(p) => p,
-        None => Arc::new(TestPersistence::new()),
+        None => Arc::new(TestDatabase::new()),
     };
-    build_app(persist, AppConfig::new(SECRET))
+    build_app(database, AppConfig::new(SECRET))
 }
 
 /// Add an authorization header token value for given role.

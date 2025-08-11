@@ -1,5 +1,5 @@
 # Rust REST API prototypes
-Experimenting with multiple web frameworks with a common persistence abstraction and mongodb implementation.
+Experimenting with multiple web frameworks with a common database abstraction and mongodb implementation.
 
 # Crates
 |Crate name|Description|
@@ -8,4 +8,4 @@ Experimenting with multiple web frameworks with a common persistence abstraction
 |rust-rocket|REST API using the rocket framework|
 |rust-warp|REST API using the warp framework|
 |rust-actix-web|REST API using the actix-web framework|
-|user-persist|Shared library used by REST API to access a data store modeling users|
+|user-database|Shared library used by REST API to access a data store modeling users|

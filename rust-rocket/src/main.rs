@@ -18,9 +18,7 @@ use sha2::Sha256;
 use std::{fmt, process, sync::Arc};
 use tracing::{event, Level};
 use tracing_subscriber::EnvFilter;
-use user_persist::{
-    mongo_persistence::MongoPersistence, persistence::UserPersistenceDynSafe, MongoArgs,
-};
+use user_database::{database::UserDatabaseDynSafe, mongo_database::MongoDatabase, MongoArgs};
 
 // This would be sourced from some vault service.
 const TEST_JWT_SECRET: &[u8] = b"TEST_SECRET";
@@ -77,15 +75,15 @@ async fn main() {
       test_jwt(Role::Admin)
     );
 
-    match MongoPersistence::new(program_opts.mongo_opts).await {
+    match MongoDatabase::new(program_opts.mongo_opts).await {
         Ok(db) => {
-            let mongo_persist: Arc<dyn UserPersistenceDynSafe> = Arc::new(db);
+            let mongo_database: Arc<dyn UserDatabaseDynSafe> = Arc::new(db);
 
             let _ = rocket::build()
                 .attach(fairings::RequestIdFairing)
                 .attach(fairings::LoggerFairing)
                 .attach(fairings::RequestTimer)
-                .manage(mongo_persist)
+                .manage(mongo_database)
                 .mount(
                     "/api/v1/user",
                     routes![

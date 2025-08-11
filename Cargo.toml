@@ -1,7 +1,7 @@
 [workspace]
 resolver = "2"
 members = [
-    "user-persist",
+    "user-database",
     # "rust-warp",
     "rust-rocket",
     "rust-actix-web",

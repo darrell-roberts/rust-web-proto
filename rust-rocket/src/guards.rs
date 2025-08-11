@@ -15,14 +15,14 @@ use serde::{Deserialize, Serialize};
 use sha2::Sha256;
 use thiserror::Error;
 use tracing::{event, Level};
-use user_persist::Validate;
+use user_database::Validate;
 
 #[derive(Debug, Error)]
 pub enum JsonValidationError {
     #[error("Validation failed")]
     ValidationFailed {
         #[from]
-        source: user_persist::ValidationErrors,
+        source: user_database::ValidationErrors,
     },
     #[error("Parsing failed")]
     ParseError {
