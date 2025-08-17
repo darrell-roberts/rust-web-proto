@@ -1,12 +1,32 @@
 //! Test Router
-use crate::common::test_database::TestDatabase;
-use axum::Router;
-use rust_axum::{arguments::AppConfig, build_app};
-use std::sync::{Arc, Once};
+use crate::common::{add_jwt, test_database::TestDatabase, MIME_JSON};
+use axum::{body::Body, Router};
+use http::{
+    header::{AUTHORIZATION, CONTENT_TYPE},
+    Method, Request, Uri,
+};
+use rust_axum::{arguments::AppConfig, build_app, types::jwt::Role};
+use std::{
+    future::Future,
+    sync::{Arc, Once},
+};
+use tower::ServiceExt;
 use tracing_subscriber::EnvFilter;
 
+pub struct TestApp {
+    router: Router,
+    request: Request<Body>,
+}
+
+impl TestApp {
+    /// Run the test request.
+    async fn run(self) -> http::Response<Body> {
+        self.router.oneshot(self.request).await.unwrap()
+    }
+}
+
 /// Build a test router.
-pub struct TestRouterBuilder {
+pub(crate) struct TestRouterBuilder {
     database: Option<Arc<TestDatabase>>,
 }
 
@@ -41,9 +61,91 @@ impl TestRouterBuilder {
         self
     }
 
-    /// Build router
-    pub fn build(self) -> Router {
-        app(self.database)
+    /// Run a get request.
+    #[allow(dead_code)]
+    pub fn get<U>(self, uri: U, role: Role) -> impl Future<Output = http::Response<Body>>
+    where
+        U: TryInto<Uri>,
+        <U as TryInto<Uri>>::Error: Into<http::Error>,
+    {
+        TestApp {
+            router: app(self.database),
+            request: Request::builder()
+                .uri(uri)
+                .header(AUTHORIZATION, add_jwt(role))
+                .body(Body::empty())
+                .unwrap(),
+        }
+        .run()
+    }
+
+    /// Run a post request.
+    #[allow(dead_code)]
+    pub fn post<U>(
+        self,
+        uri: U,
+        role: Role,
+        body: impl Into<Body>,
+    ) -> impl Future<Output = http::Response<Body>>
+    where
+        U: TryInto<Uri>,
+        <U as TryInto<Uri>>::Error: Into<http::Error>,
+    {
+        TestApp {
+            router: app(self.database),
+            request: Request::builder()
+                .uri(uri)
+                .method(Method::POST)
+                .header(CONTENT_TYPE, MIME_JSON)
+                .header(AUTHORIZATION, add_jwt(role))
+                .body(body.into())
+                .unwrap(),
+        }
+        .run()
+    }
+
+    /// Run a put request
+    #[allow(dead_code)]
+    pub fn put<U>(
+        self,
+        uri: U,
+        role: Role,
+        body: impl Into<Body>,
+    ) -> impl Future<Output = http::Response<Body>>
+    where
+        U: TryInto<Uri>,
+        <U as TryInto<Uri>>::Error: Into<http::Error>,
+    {
+        TestApp {
+            router: app(self.database),
+            request: Request::builder()
+                .uri(uri)
+                .method(Method::PUT)
+                .header(CONTENT_TYPE, MIME_JSON)
+                .header(AUTHORIZATION, add_jwt(role))
+                .body(body.into())
+                .unwrap(),
+        }
+        .run()
+    }
+
+    /// Run a delete request.
+    #[allow(dead_code)]
+    pub fn delete<U>(self, uri: U, role: Role) -> impl Future<Output = http::Response<Body>>
+    where
+        U: TryInto<Uri>,
+        <U as TryInto<Uri>>::Error: Into<http::Error>,
+    {
+        TestApp {
+            router: app(self.database),
+            request: Request::builder()
+                .uri(uri)
+                .method(Method::DELETE)
+                .header(AUTHORIZATION, add_jwt(role))
+                .body(Body::empty())
+                .unwrap(),
+        }
+        .run()
     }
 }
 

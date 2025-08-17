@@ -1,13 +1,11 @@
 //! Integration tests for routes.
 use crate::common::{
-    body_as, body_as_str, dump_result, get, post, put, test_database::test_user,
-    test_router::TestRouterBuilder,
+    body_as, body_as_str, dump_result, test_database::test_user, test_router::TestRouterBuilder,
 };
 use axum::http::StatusCode;
 use cool_asserts::assert_matches;
 use rust_axum::{security::hashing::HashedUser, types::jwt::Role};
 use serde_json::{from_str, json, to_string, to_vec, Value};
-use tower::ServiceExt;
 use tracing::debug;
 use user_database::types::{Email, Gender, UpdateUser, User, UserKey, UserSearch};
 
@@ -16,10 +14,8 @@ mod common;
 #[tokio::test]
 async fn get_user() {
     let response = TestRouterBuilder::new()
-        .build()
-        .oneshot(get("/api/v1/user/61c0d1954c6b974ca7000000", Role::Admin).unwrap())
-        .await
-        .unwrap();
+        .get("/api/v1/user/61c0d1954c6b974ca7000000", Role::Admin)
+        .await;
 
     assert_eq!(response.status(), StatusCode::OK);
     let user = body_as::<HashedUser>(response).await;
@@ -29,10 +25,8 @@ async fn get_user() {
 #[tokio::test]
 async fn get_user_invalid_role() {
     let response = TestRouterBuilder::new()
-        .build()
-        .oneshot(get("/api/v1/user/61c0d1954c6b974ca7000000", Role::User).unwrap())
-        .await
-        .unwrap();
+        .get("/api/v1/user/61c0d1954c6b974ca7000000", Role::User)
+        .await;
 
     assert_eq!(response.status(), StatusCode::FORBIDDEN);
     dump_result(response).await;
@@ -41,10 +35,8 @@ async fn get_user_invalid_role() {
 #[tokio::test]
 async fn get_user_not_found() {
     let response = TestRouterBuilder::new()
-        .build()
-        .oneshot(get("/api/v1/user/71c0d1954c6b974ca7000000", Role::Admin).unwrap())
-        .await
-        .unwrap();
+        .get("/api/v1/user/71c0d1954c6b974ca7000000", Role::Admin)
+        .await;
 
     assert_eq!(response.status(), StatusCode::NOT_FOUND);
 }
@@ -53,10 +45,8 @@ async fn get_user_not_found() {
 async fn save_user() {
     let json_user = to_vec(&test_user(None)).unwrap();
     let response = TestRouterBuilder::new()
-        .build()
-        .oneshot(post("/api/v1/user", Role::User, json_user).unwrap())
-        .await
-        .unwrap();
+        .post("/api/v1/user", Role::User, json_user)
+        .await;
 
     assert_eq!(response.status(), StatusCode::OK);
     let saved_user = body_as::<User>(response).await;
@@ -79,10 +69,8 @@ async fn save_user_validation_rejection() {
    }"#;
 
     let response = TestRouterBuilder::new()
-        .build()
-        .oneshot(post("/api/v1/user", Role::User, json_user).unwrap())
-        .await
-        .unwrap();
+        .post("/api/v1/user", Role::User, json_user)
+        .await;
 
     assert_eq!(response.status(), StatusCode::BAD_REQUEST);
 
@@ -122,10 +110,8 @@ async fn update_user() {
     debug!("update user: {update_user_json}");
 
     let response = TestRouterBuilder::new()
-        .build()
-        .oneshot(put("/api/v1/user", Role::Admin, update_user_json).unwrap())
-        .await
-        .unwrap();
+        .put("/api/v1/user", Role::Admin, update_user_json)
+        .await;
     let status = response.status();
     let body = body_as_str(response).await;
     debug!("response body: {body}");
@@ -147,10 +133,8 @@ async fn update_user_bad_hash() {
     debug!("update user: {update_user_json}");
 
     let response = TestRouterBuilder::new()
-        .build()
-        .oneshot(put("/api/v1/user", Role::Admin, update_user_json).unwrap())
-        .await
-        .unwrap();
+        .put("/api/v1/user", Role::Admin, update_user_json)
+        .await;
     assert_eq!(response.status(), StatusCode::UNAUTHORIZED);
     assert_eq!(
         body_as::<Value>(response).await,
@@ -172,10 +156,8 @@ async fn search_users() {
     let search_json = to_vec(&search).unwrap();
 
     let response = TestRouterBuilder::new()
-        .build()
-        .oneshot(post("/api/v1/user/search", Role::Admin, search_json).unwrap())
-        .await
-        .unwrap();
+        .post("/api/v1/user/search", Role::Admin, search_json)
+        .await;
 
     assert_eq!(response.status(), StatusCode::OK);
     let users = body_as::<Vec<HashedUser>>(response).await;
@@ -194,10 +176,8 @@ async fn search_users() {
 #[tokio::test]
 async fn count_users() {
     let response = TestRouterBuilder::new()
-        .build()
-        .oneshot(get("/api/v1/user/counts", Role::Admin).unwrap())
-        .await
-        .unwrap();
+        .get("/api/v1/user/counts", Role::Admin)
+        .await;
 
     assert_eq!(response.status(), StatusCode::OK);
     assert_eq!(
@@ -209,10 +189,8 @@ async fn count_users() {
 #[tokio::test]
 async fn download_users() {
     let response = TestRouterBuilder::new()
-        .build()
-        .oneshot(get("/api/v1/user/download", Role::Admin).unwrap())
-        .await
-        .unwrap();
+        .get("/api/v1/user/download", Role::Admin)
+        .await;
 
     assert_eq!(response.status(), StatusCode::OK);
     assert_eq!(
