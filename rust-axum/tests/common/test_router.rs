@@ -51,7 +51,7 @@ fn app(database: Option<Arc<TestDatabase>>) -> Router {
     init_log();
     let database = match database {
         Some(p) => p,
-        None => Arc::new(TestDatabase::new()),
+        None => Arc::new(TestDatabase::default()),
     };
     build_app(database, AppConfig::new(SECRET))
 }

@@ -19,7 +19,7 @@ mod common;
 /// Runs a test scenario. A user is saved/updated/fetched/deleted/fetched.
 #[tokio::test]
 async fn test_scenario() {
-    let database = Arc::new(TestDatabase::new());
+    let database = Arc::new(TestDatabase::default());
 
     let user = create_user(database.clone()).await;
     update_user(database.clone(), &user).await;

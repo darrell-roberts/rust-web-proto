@@ -9,9 +9,9 @@ use user_database::{
 };
 
 /// Create a test user.
-pub fn test_user(id: Option<UserKey>) -> User {
+pub fn test_user(id: impl Into<Option<UserKey>>) -> User {
     User {
-        id,
+        id: id.into(),
         name: String::from("Test User"),
         email: Email(String::from("test@test.com")),
         age: 100,
@@ -19,6 +19,7 @@ pub fn test_user(id: Option<UserKey>) -> User {
     }
 }
 
+/// An in memory test key value store.
 #[derive(Debug, Clone)]
 pub struct TestDatabase(Arc<RwLock<HashMap<UserKey, User>>>);
 
@@ -30,11 +31,11 @@ impl Deref for TestDatabase {
 }
 
 impl TestDatabase {
-    pub fn new() -> Self {
+    fn new() -> Self {
         // Setup some test data.
         let mut map = HashMap::new();
         let key = "61c0d1954c6b974ca7000000".parse::<UserKey>().unwrap();
-        map.insert(key.clone(), test_user(Some(key)));
+        map.insert(key.clone(), test_user(key));
         Self(Arc::new(RwLock::new(map)))
     }
 }
@@ -71,15 +72,15 @@ impl UserDatabase for TestDatabase {
     }
 
     async fn remove_user(&self, user: &UserKey) -> DatabaseResult<()> {
-        let mut m = self.write().unwrap();
-        m.remove(user);
+        let mut guard = self.write().unwrap();
+        guard.remove(user);
         Ok(())
     }
 
     async fn search_users(&self, _user_search: &UserSearch) -> Result<Vec<User>, DatabaseError> {
-        Ok(vec![test_user(Some(
-            "61c0d1954c6b974ca7000000".parse().unwrap(),
-        ))])
+        Ok(vec![test_user(
+            "61c0d1954c6b974ca7000000".parse::<UserKey>().unwrap(),
+        )])
     }
 
     async fn count_genders(&self) -> Result<Vec<Value>, DatabaseError> {
