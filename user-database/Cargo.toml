@@ -16,7 +16,4 @@ serde_json.workspace = true
 thiserror.workspace = true
 tracing.workspace = true
 uuid.workspace = true
-
-[dependencies.validator]
-features = ["derive"]
-version = "0.20"
+validator = { version = "0.20", features = ["derive"] }
