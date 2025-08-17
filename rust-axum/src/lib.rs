@@ -45,7 +45,7 @@ where
             post(user_handlers::search_users::<P>).layer(hashing_layer::<Vec<User>>()),
         )
         .route("/user/counts", get(user_handlers::count_users::<P>))
-        .route("/user/download", get(user_handlers::download_users))
+        .route("/user/download", get(user_handlers::download_users::<P>))
         .route("/user/{id}", delete(user_handlers::delete_user::<P>))
 }
 

@@ -1,4 +1,5 @@
 //! A mocked User database test api.
+use futures::stream;
 use mongodb::bson::oid::ObjectId;
 use serde_json::{json, Value};
 use std::{collections::HashMap, ops::Deref, sync::Arc, sync::RwLock};
@@ -93,5 +94,33 @@ impl UserDatabase for TestDatabase {
                 "count": 12
             }),
         ])
+    }
+
+    async fn download(
+        &self,
+    ) -> DatabaseResult<impl futures::Stream<Item = DatabaseResult<User>> + 'static> {
+        Ok(stream::iter([
+            Ok(User {
+                id: Some(UserKey("key1".into())),
+                name: "Test User 1".into(),
+                age: 100,
+                email: Email("test1@test.com".into()),
+                gender: Gender::Male,
+            }),
+            Ok(User {
+                id: Some(UserKey("key2".into())),
+                name: "Test User 2".into(),
+                age: 100,
+                email: Email("test2@test.com".into()),
+                gender: Gender::Male,
+            }),
+            Ok(User {
+                id: Some(UserKey("key3".into())),
+                name: "Test User 3".into(),
+                age: 100,
+                email: Email("test3@test.com".into()),
+                gender: Gender::Male,
+            }),
+        ]))
     }
 }
