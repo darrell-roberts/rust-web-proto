@@ -5,13 +5,9 @@ use crate::{
     types::{Email, Gender, UpdateUser, User, UserKey, UserSearch},
     MongoArgs,
 };
-use futures::{
-    stream::{Stream, TryStreamExt},
-    StreamExt,
-};
+use futures::stream::{Stream, TryStreamExt};
 use mongodb::{
     bson::{doc, oid::ObjectId, Bson, Document},
-    error::Result as MongoResult,
     results::InsertOneResult,
     Collection, Database,
 };
@@ -136,22 +132,23 @@ impl UserDatabase for MongoDatabase {
 
         Ok(docs)
     }
+
+    async fn download(
+        &self,
+    ) -> DatabaseResult<impl Stream<Item = DatabaseResult<User>> + 'static + Send> {
+        Ok(self
+            .user_collection()
+            .find(doc! {})
+            .await?
+            .map_ok(User::from)
+            .map_err(Into::into))
+    }
 }
 
 impl MongoDatabase {
     /// Get the user collection.
     pub(crate) fn user_collection(&self) -> Collection<MongoUser> {
         self.collection::<MongoUser>(COLLECTION_NAME)
-    }
-
-    /// Extra capabilities outside of the Database trait.
-    /// Download all users from the mongodb collection.
-    pub async fn download(&self) -> DatabaseResult<impl Stream<Item = MongoResult<User>>> {
-        Ok(self
-            .user_collection()
-            .find(doc! {})
-            .await?
-            .map(|r| r.map(User::from)))
     }
 }
 

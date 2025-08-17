@@ -1,6 +1,7 @@
 //! Generic UserDatabase Trait and types.
 use crate::types::{UpdateUser, User, UserKey, UserSearch};
 use async_trait::async_trait;
+use futures::Stream;
 use serde_json::Value;
 use std::{fmt::Debug, future::Future};
 use thiserror::Error;
@@ -27,6 +28,12 @@ pub trait UserDatabase: Send + Sync + Debug {
     ) -> impl Future<Output = DatabaseResult<Vec<User>>> + Send;
     /// Count the number of users grouping by gender.
     fn count_genders(&self) -> impl Future<Output = Result<Vec<Value>, DatabaseError>> + Send;
+    /// Download all users as a stream.
+    fn download(
+        &self,
+    ) -> impl Future<
+        Output = DatabaseResult<impl Stream<Item = DatabaseResult<User>> + 'static + Send>,
+    > + Send;
 }
 
 /// Abstract our database API so it can be swapped out

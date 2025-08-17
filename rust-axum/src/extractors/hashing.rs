@@ -61,10 +61,8 @@ where
         let ValidatingJson(data): ValidatingJson<T> =
             ValidatingJson::from_request(req, state).await?;
 
-        if data.is_valid(config.hash_prefix()) {
-            Ok(Self(data))
-        } else {
-            Err(HashedValidatingError::InvalidHash)
-        }
+        data.is_valid(config.hash_prefix())
+            .then_some(Self(data))
+            .ok_or(HashedValidatingError::InvalidHash)
     }
 }

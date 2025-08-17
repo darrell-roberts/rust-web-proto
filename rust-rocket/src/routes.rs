@@ -8,7 +8,7 @@ use serde_json::Value;
 use std::sync::Arc;
 use tracing::{event, Level};
 use user_database::{
-    database::UserDatabaseDynSafe,
+    database::{UserDatabase as _, UserDatabaseDynSafe},
     mongo_database::MongoDatabase,
     types::{UpdateUser, User, UserSearch},
 };
@@ -94,7 +94,7 @@ pub async fn download(
     db: &State<MongoDatabase>,
     req_id: RequestId,
     #[allow(unused)] role: AdminAccess,
-) -> HandlerResult<ByteStream![Vec<u8>]> {
+) -> HandlerResult<ByteStream![Vec<u8> + '_]> {
     let stream = db.download().await?;
     let bstream = ByteStream! {
         for await user in stream {

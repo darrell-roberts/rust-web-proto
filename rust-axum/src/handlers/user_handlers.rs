@@ -8,17 +8,15 @@ use crate::{
 };
 use axum::{
     body::Body,
-    extract::{Extension, Json, Path},
+    extract::{Json, Path},
     response::IntoResponse,
 };
 use futures::stream::{self, StreamExt};
 use http::{Response, StatusCode};
 use serde_json::{to_string, Value};
-use std::sync::Arc;
 use tracing::debug;
 use user_database::{
     database::UserDatabase,
-    mongo_database::MongoDatabase,
     types::{UpdateUser, User, UserKey, UserSearch},
 };
 
@@ -124,10 +122,13 @@ where
 // to http client.
 
 /// Download users handler
-pub async fn download_users(
-    db: Extension<Arc<MongoDatabase>>,
+pub async fn download_users<P>(
+    db: Database<P>,
     claims: AdminAccess,
-) -> HandlerResult<impl IntoResponse> {
+) -> HandlerResult<impl IntoResponse>
+where
+    P: UserDatabase,
+{
     debug!("Streaming users for {claims}");
 
     // Chain my stream with a header and footer
@@ -140,7 +141,14 @@ pub async fn download_users(
         .download()
         .await?
         .filter_map(|r| async { r.ok() })
-        .map(|u| to_string(&u).map(|s| format!("{s},")));
+        .enumerate()
+        .map(|(index, u)| {
+            if index > 0 {
+                to_string(&u).map(|s| format!(",{s}"))
+            } else {
+                to_string(&u)
+            }
+        });
 
     Ok(Response::builder()
         .status(StatusCode::OK)

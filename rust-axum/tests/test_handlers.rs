@@ -268,3 +268,45 @@ async fn count_users() {
         json!([{"_id":"Male","count":6},{"_id":"Female","count":12}])
     );
 }
+
+#[tokio::test]
+async fn download_users() {
+    let response = app(None)
+        .oneshot(
+            Request::builder()
+                .uri("/api/v1/user/download")
+                .header(AUTHORIZATION, add_jwt(Role::Admin))
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(response.status(), StatusCode::OK);
+    assert_eq!(
+        body_as::<Vec<User>>(response).await,
+        [
+            User {
+                id: Some(UserKey("key1".into())),
+                name: "Test User 1".into(),
+                age: 100,
+                email: Email("test1@test.com".into()),
+                gender: Gender::Male,
+            },
+            User {
+                id: Some(UserKey("key2".into())),
+                name: "Test User 2".into(),
+                age: 100,
+                email: Email("test2@test.com".into()),
+                gender: Gender::Male,
+            },
+            User {
+                id: Some(UserKey("key3".into())),
+                name: "Test User 3".into(),
+                age: 100,
+                email: Email("test3@test.com".into()),
+                gender: Gender::Male,
+            },
+        ]
+    )
+}
