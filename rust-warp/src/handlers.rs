@@ -1,6 +1,6 @@
 use crate::types::WarpDatabaseError;
 use std::sync::Arc;
-use tracing::{event, instrument, Level};
+use tracing::{debug, instrument};
 use user_database::{
     database::{DatabaseError, UserDatabase},
     types::{User, UserKey, UserSearch},
@@ -11,18 +11,13 @@ fn to_warp_error(err: DatabaseError) -> WarpDatabaseError {
     WarpDatabaseError(err.to_string())
 }
 
-const USER_MS_TARGET: &str = "user-ms";
-
-type Database = Arc<dyn UserDatabase>;
-
-pub async fn handle_get_user(id: UserKey, db: Database) -> Result<impl Reply, Rejection> {
-    event!(
-      target: USER_MS_TARGET,
-      Level::DEBUG,
-      "Getting user with id: {id:?}"
-    );
+pub async fn handle_get_user<P>(id: UserKey, db: Arc<P>) -> Result<impl Reply, Rejection>
+where
+    P: UserDatabase,
+{
+    debug!("Getting user with id: {id:?}");
     let user = db.get_user(&id).await.map_err(to_warp_error)?;
-    event!(target: USER_MS_TARGET, Level::DEBUG, "User: {user:?}");
+    debug!("User: {user:?}");
     match user {
         Some(u) => Ok(reply::json(&u).into_response()),
         None => Ok(reply::with_status("", StatusCode::NOT_FOUND).into_response()),
@@ -30,31 +25,29 @@ pub async fn handle_get_user(id: UserKey, db: Database) -> Result<impl Reply, Re
 }
 
 #[instrument(skip(db, search), name = "request-span", target = "user-ms")]
-pub async fn handle_search_users(
-    search: UserSearch,
-    db: Database,
-) -> Result<impl Reply, Rejection> {
-    event!(
-      target: USER_MS_TARGET,
-      Level::DEBUG,
-      "searching with {search:?}"
-    );
+pub async fn handle_search_users<P>(search: UserSearch, db: Arc<P>) -> Result<impl Reply, Rejection>
+where
+    P: UserDatabase,
+{
+    debug!("searching with {search:?}");
     let users = db.search_users(&search).await.map_err(to_warp_error)?;
-    event!(
-      target: USER_MS_TARGET,
-      Level::DEBUG,
-      "search result: {users:?}"
-    );
+    debug!("search result: {users:?}");
     Ok(reply::json(&users))
 }
 
-pub async fn handle_save_user(user: User, db: Database) -> Result<impl Reply, Rejection> {
+pub async fn handle_save_user<P>(user: User, db: Arc<P>) -> Result<impl Reply, Rejection>
+where
+    P: UserDatabase,
+{
     let saved_user = db.save_user(&user).await.map_err(to_warp_error)?;
     Ok(reply::json(&saved_user))
 }
 
-pub async fn handle_count_genders(db: Database) -> Result<impl Reply, Rejection> {
-    event!(target: USER_MS_TARGET, Level::DEBUG, "counting users");
+pub async fn handle_count_genders<P>(db: Arc<P>) -> Result<impl Reply, Rejection>
+where
+    P: UserDatabase,
+{
+    debug!("counting users");
     let counts = db.count_genders().await.map_err(to_warp_error)?;
     Ok(reply::json(&counts))
 }

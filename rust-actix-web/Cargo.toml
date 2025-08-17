@@ -9,49 +9,34 @@ edition = "2021"
 name = "rust-actix"
 
 [dependencies]
-futures = "0.3"
-serde_json = "1.0"
-user-database = { path = "../user-database" }
-log = "0.4"
-tracing = "0.1"
-thiserror = "*"
-tracing-actix-web = "0.7"
-async-trait = "0.1"
 actix-http = "3"
 actix-service = "2"
-# TODO: replace with jswonwebtoken
-jwt = "0.16"
+async-trait = "0.1"
+chrono.workspace = true
+clap.workspace = true
+futures.workspace = true
 hmac = "0.12"
-sha2 = "0.10"
-chrono = "0.4"
-
-[dependencies.tracing-subscriber]
-version = "0.3"
-default-features = false
-features = ["json", "env-filter", "std", "ansi", "fmt"]
+jwt = "0.16"
+log.workspace = true
+mongodb.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+sha2.workspace = true
+thiserror.workspace = true
+tracing.workspace = true
+tracing-actix-web = "0.7"
+tracing-subscriber.workspace = true
+user-database.workspace = true
+uuid.workspace = true
 
 [dependencies.tokio]
-version = "1.47"
 features = ["time"]
+version = "1.47"
 
 [dependencies.actix-web]
-version = "4"
 features = ["openssl"]
-
-[dependencies.serde]
-version = "1.0"
-
-[dependencies.mongodb]
-version = "3.2"
-
-[dependencies.clap]
-version = "4.5"
-features = ["derive"]
-
-[dependencies.uuid]
-version = "1"
-features = ["v4"]
+version = "4"
 
 [dependencies.openssl]
-version = "0.10"
 features = ["v110"]
+version = "0.10"

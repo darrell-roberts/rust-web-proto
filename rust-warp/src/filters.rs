@@ -1,17 +1,18 @@
 use crate::handlers;
 use serde_json::json;
 use std::{convert::Infallible, sync::Arc};
-use tracing::{event, info_span, Level};
+use tracing::{debug, info_span};
 use user_database::{database::UserDatabase, types::UserKey};
 use uuid::Uuid;
 use warp::Filter;
 
-const FRAMEWORK_TARGET: &str = "ms-framework";
-
-type Database = Arc<dyn UserDatabase>;
+type Database<T> = Arc<T>;
 
 /// Provides the Database API
-fn with_db(db: Database) -> impl Filter<Extract = (Database,), Error = Infallible> + Clone {
+fn with_db<P>(db: Database<P>) -> impl Filter<Extract = (Database<P>,), Error = Infallible> + Clone
+where
+    P: UserDatabase,
+{
     warp::any().map(move || db.clone())
 }
 
@@ -25,18 +26,23 @@ where
     warp::any()
         .map(|| warp::header::optional::<String>("Host"))
         .map(|_h| {
-            event!(target: FRAMEWORK_TARGET, Level::DEBUG, "Before filter");
+            debug!("Before filter");
         })
         .untuple_one()
         .and(filter)
         .map(|res| {
-            event!(target: FRAMEWORK_TARGET, Level::DEBUG, "After filter");
+            debug!("After filter");
             res
         })
 }
 
 /// Top level filter for the User API.
-pub fn user(db: Database) -> impl Filter<Extract = impl warp::Reply, Error = Infallible> + Clone {
+pub fn user<P>(
+    db: Database<P>,
+) -> impl Filter<Extract = impl warp::Reply, Error = Infallible> + Clone
+where
+    P: UserDatabase,
+{
     let base_path = warp::path("api")
         .and(warp::path("v1"))
         .and(warp::path("user"));
@@ -49,19 +55,20 @@ pub fn user(db: Database) -> impl Filter<Extract = impl warp::Reply, Error = Inf
     );
 
     routes
-    .with(warp::filters::compression::gzip())
-    .with(warp::trace(|req| {
-      let headers = req.request_headers();
-      let req_id = headers.get("x-request-id")
-        .and_then(|v| v.to_str().ok().map(String::from))
-        .unwrap_or_else(|| Uuid::new_v4().to_string());
-      info_span!(target: FRAMEWORK_TARGET, "request-span", %req_id, method = %req.method(), path = %req.path())
-    }))
-    // .map(|reply| {
-    //   warp::reply::with_header(reply, "x-request-id", "abc")
-    // })
-    .recover(handle_rejection)
-    .with(warp::wrap_fn(test_wrapper))
+        .with(warp::filters::compression::gzip())
+        .with(warp::trace(|req| {
+            let headers = req.request_headers();
+            let req_id = headers
+                .get("x-request-id")
+                .and_then(|v| v.to_str().ok().map(String::from))
+                .unwrap_or_else(|| Uuid::new_v4().to_string());
+            info_span!("request-span", %req_id, method = %req.method(), path = %req.path())
+        }))
+        // .map(|reply| {
+        //   warp::reply::with_header(reply, "x-request-id", "abc")
+        // })
+        .recover(handle_rejection)
+        .with(warp::wrap_fn(test_wrapper))
 }
 
 async fn handle_rejection(err: warp::Rejection) -> Result<impl warp::Reply, Infallible> {
@@ -76,18 +83,24 @@ async fn handle_rejection(err: warp::Rejection) -> Result<impl warp::Reply, Infa
     ))
 }
 
-pub fn get_user(
-    db: Database,
-) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
+pub fn get_user<P>(
+    db: Database<P>,
+) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone
+where
+    P: UserDatabase,
+{
     warp::path!(UserKey)
         .and(warp::get())
         .and(with_db(db))
         .and_then(handlers::handle_get_user)
 }
 
-pub fn search_users(
-    db: Database,
-) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
+pub fn search_users<P>(
+    db: Database<P>,
+) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone
+where
+    P: UserDatabase,
+{
     warp::path("search")
         .and(warp::post())
         .and(warp::body::json())
@@ -95,18 +108,24 @@ pub fn search_users(
         .and_then(handlers::handle_search_users)
 }
 
-pub fn save_user(
-    db: Database,
-) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
+pub fn save_user<P>(
+    db: Database<P>,
+) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone
+where
+    P: UserDatabase,
+{
     warp::post()
         .and(warp::body::json())
         .and(with_db(db))
         .and_then(handlers::handle_save_user)
 }
 
-pub fn count_genders(
-    db: Database,
-) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
+pub fn count_genders<P>(
+    db: Database<P>,
+) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone
+where
+    P: UserDatabase,
+{
     warp::path("counts")
         .and(with_db(db))
         .and_then(handlers::handle_count_genders)

@@ -1,5 +1,5 @@
-use async_trait::async_trait;
 use flate2::read::GzDecoder;
+use futures::stream;
 use rust_warp::filters::user;
 use serde_json::{from_str, json, Value};
 use std::{
@@ -45,7 +45,6 @@ fn test_user() -> User {
 }
 
 // A mock database for testing.
-#[async_trait]
 impl UserDatabase for TestDatabase {
     async fn get_user(&self, id: &UserKey) -> Result<Option<User>, DatabaseError> {
         if id.0 == "61c0d1954c6b974ca7000000" {
@@ -73,6 +72,34 @@ impl UserDatabase for TestDatabase {
 
     async fn count_genders(&self) -> Result<Vec<Value>, DatabaseError> {
         Err(DatabaseError::TestError)
+    }
+
+    async fn download(
+        &self,
+    ) -> DatabaseResult<impl futures::Stream<Item = DatabaseResult<User>> + 'static> {
+        Ok(stream::iter([
+            Ok(User {
+                id: Some(UserKey("key1".into())),
+                name: "Test User 1".into(),
+                age: 100,
+                email: Email("test1@test.com".into()),
+                gender: Gender::Male,
+            }),
+            Ok(User {
+                id: Some(UserKey("key2".into())),
+                name: "Test User 2".into(),
+                age: 100,
+                email: Email("test2@test.com".into()),
+                gender: Gender::Male,
+            }),
+            Ok(User {
+                id: Some(UserKey("key3".into())),
+                name: "Test User 3".into(),
+                age: 100,
+                email: Email("test3@test.com".into()),
+                gender: Gender::Male,
+            }),
+        ]))
     }
 }
 
