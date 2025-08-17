@@ -1,17 +1,17 @@
 //! User database types.
-use lazy_static::lazy_static;
 use mongodb::bson::oid::ObjectId;
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 use std::{
     fmt::{self, Display},
     ops::Deref,
+    sync::LazyLock,
 };
 use tracing::debug;
 use validator::{Validate, ValidationError};
 
 /// User Gender
-#[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
 pub enum Gender {
     Male,
     Female,
@@ -47,12 +47,12 @@ impl Deref for Email {
     }
 }
 
+static RE: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"[a-zA-Z0-9+._-]+@[a-zA-Z-]+\.[a-z]+").unwrap());
+
 impl Email {
     /// Validate email.
     fn is_valid(&self) -> bool {
-        lazy_static! {
-            static ref RE: Regex = Regex::new(r"[a-zA-Z0-9+._-]+@[a-zA-Z-]+\.[a-z]+").unwrap();
-        }
         RE.is_match(self)
     }
 }

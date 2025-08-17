@@ -3,9 +3,8 @@ use futures::stream;
 use mongodb::bson::oid::ObjectId;
 use serde_json::{json, Value};
 use std::{collections::HashMap, ops::Deref, sync::Arc, sync::RwLock};
-use user_database::database::DatabaseResult;
 use user_database::{
-    database::{DatabaseError, UserDatabase},
+    database::{DatabaseError, DatabaseResult, UserDatabase},
     types::{Email, Gender, UpdateUser, User, UserKey, UserSearch},
 };
 

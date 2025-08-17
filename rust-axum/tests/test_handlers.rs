@@ -1,7 +1,7 @@
 //! Integration tests for routes.
 use crate::common::{
-    add_jwt, app, body_as, body_as_str, dump_result, test_database::test_user, MIME_JSON,
-    TEST_TARGET,
+    add_jwt, body_as, body_as_str, dump_result, test_database::test_user,
+    test_router::TestRouterBuilder, MIME_JSON,
 };
 use axum::{
     body::Body,
@@ -21,7 +21,8 @@ mod common;
 
 #[tokio::test]
 async fn get_user() {
-    let response = app(None)
+    let response = TestRouterBuilder::new()
+        .build()
         .oneshot(
             Request::builder()
                 .uri("/api/v1/user/61c0d1954c6b974ca7000000")
@@ -39,7 +40,8 @@ async fn get_user() {
 
 #[tokio::test]
 async fn get_user_invalid_role() {
-    let response = app(None)
+    let response = TestRouterBuilder::new()
+        .build()
         .oneshot(
             Request::builder()
                 .uri("/api/v1/user/61c0d1954c6b974ca7000000")
@@ -56,7 +58,8 @@ async fn get_user_invalid_role() {
 
 #[tokio::test]
 async fn get_user_not_found() {
-    let response = app(None)
+    let response = TestRouterBuilder::new()
+        .build()
         .oneshot(
             Request::builder()
                 .uri("/api/v1/user/71c0d1954c6b974ca7000000")
@@ -73,7 +76,8 @@ async fn get_user_not_found() {
 #[tokio::test]
 async fn save_user() {
     let json_user = serde_json::to_string(&test_user(None)).unwrap();
-    let response = app(None)
+    let response = TestRouterBuilder::new()
+        .build()
         .oneshot(
             Request::builder()
                 .uri("/api/v1/user")
@@ -106,7 +110,8 @@ async fn save_user_validation_rejection() {
     "gender": "Male"
   }"#;
 
-    let response = app(None)
+    let response = TestRouterBuilder::new()
+        .build()
         .oneshot(
             Request::builder()
                 .uri("/api/v1/user")
@@ -125,7 +130,7 @@ async fn save_user_validation_rejection() {
 
     let validation_errors = from_str::<Value>(&body).unwrap();
 
-    debug!(target: TEST_TARGET, "json errors {body}");
+    debug!("json errors {body}");
 
     let email_validation_code = validation_errors
         .get("validation_errors")
@@ -155,9 +160,10 @@ async fn update_user() {
 
     let update_user_json = to_string(&update_user).unwrap();
 
-    debug!(target: TEST_TARGET, "update user: {update_user_json}");
+    debug!("update user: {update_user_json}");
 
-    let response = app(None)
+    let response = TestRouterBuilder::new()
+        .build()
         .oneshot(
             Request::builder()
                 .uri("/api/v1/user")
@@ -171,7 +177,7 @@ async fn update_user() {
         .unwrap();
     let status = response.status();
     let body = body_as_str(response).await;
-    debug!(target: TEST_TARGET, "response body: {body}");
+    debug!("response body: {body}");
     assert_eq!(status, StatusCode::OK);
     assert_eq!(body, "");
 }
@@ -188,9 +194,10 @@ async fn update_user_bad_hash() {
 
     let update_user_json = to_string(&update_user).unwrap();
 
-    debug!(target: TEST_TARGET, "update user: {update_user_json}");
+    debug!("update user: {update_user_json}");
 
-    let response = app(None)
+    let response = TestRouterBuilder::new()
+        .build()
         .oneshot(
             Request::builder()
                 .uri("/api/v1/user")
@@ -222,7 +229,8 @@ async fn search_users() {
 
     let search_json = to_string(&search).unwrap();
 
-    let response = app(None)
+    let response = TestRouterBuilder::new()
+        .build()
         .oneshot(
             Request::builder()
                 .uri("/api/v1/user/search")
@@ -251,7 +259,8 @@ async fn search_users() {
 
 #[tokio::test]
 async fn count_users() {
-    let response = app(None)
+    let response = TestRouterBuilder::new()
+        .build()
         .oneshot(
             Request::builder()
                 .uri("/api/v1/user/counts")
@@ -271,7 +280,8 @@ async fn count_users() {
 
 #[tokio::test]
 async fn download_users() {
-    let response = app(None)
+    let response = TestRouterBuilder::new()
+        .build()
         .oneshot(
             Request::builder()
                 .uri("/api/v1/user/download")

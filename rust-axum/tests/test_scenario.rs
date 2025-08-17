@@ -1,4 +1,5 @@
 //! Test an end to end scenario.
+use crate::common::test_router::TestRouterBuilder;
 use axum::{
     body::Body,
     http::{
@@ -6,7 +7,7 @@ use axum::{
         Method, Request, StatusCode,
     },
 };
-use common::{add_jwt, app, body_as, test_database::TestDatabase, MIME_JSON, TEST_TARGET};
+use common::{add_jwt, body_as, test_database::TestDatabase, MIME_JSON};
 use rust_axum::{security::hashing::HashedUser, types::jwt::Role};
 use std::sync::Arc;
 use tower::ServiceExt;
@@ -25,7 +26,9 @@ async fn test_scenario() {
     get_user(database.clone(), &user).await;
     delete_user(database.clone(), &user).await;
 
-    let response = app(Some(database))
+    let response = TestRouterBuilder::new()
+        .with_database(database)
+        .build()
         .oneshot(
             Request::builder()
                 .uri(format!(
@@ -50,7 +53,9 @@ async fn create_user(database: Arc<TestDatabase>) -> HashedUser {
     "gender": "Female"
   }"#;
 
-    let save_response = app(Some(database))
+    let save_response = TestRouterBuilder::new()
+        .with_database(database)
+        .build()
         .oneshot(
             Request::builder()
                 .uri("/api/v1/user")
@@ -65,7 +70,7 @@ async fn create_user(database: Arc<TestDatabase>) -> HashedUser {
 
     assert_eq!(save_response.status(), StatusCode::OK);
     let saved_user = body_as::<HashedUser>(save_response).await;
-    debug!(target: TEST_TARGET, "saved_user: {saved_user:?}");
+    debug!("saved_user: {saved_user:?}");
     assert!(saved_user.user.id.is_some());
     saved_user
 }
@@ -79,7 +84,9 @@ async fn update_user(database: Arc<TestDatabase>, user: &HashedUser) {
         email: user.user.email.clone(),
     };
 
-    let update_response = app(Some(database))
+    let update_response = TestRouterBuilder::new()
+        .with_database(database)
+        .build()
         .oneshot(
             Request::builder()
                 .uri("/api/v1/user")
@@ -98,7 +105,9 @@ async fn update_user(database: Arc<TestDatabase>, user: &HashedUser) {
 }
 
 async fn get_user(database: Arc<TestDatabase>, user: &HashedUser) {
-    let response = app(Some(database))
+    let response = TestRouterBuilder::new()
+        .with_database(database)
+        .build()
         .oneshot(
             Request::builder()
                 .uri(format!(
@@ -118,7 +127,9 @@ async fn get_user(database: Arc<TestDatabase>, user: &HashedUser) {
 }
 
 async fn delete_user(database: Arc<TestDatabase>, user: &HashedUser) {
-    let response = app(Some(database))
+    let response = TestRouterBuilder::new()
+        .with_database(database)
+        .build()
         .oneshot(
             Request::builder()
                 .uri(format!(

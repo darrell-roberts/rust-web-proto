@@ -3970,7 +3970,6 @@ dependencies = [
  "async-trait",
  "clap",
  "futures",
- "lazy_static",
  "mongodb",
  "regex",
  "serde",

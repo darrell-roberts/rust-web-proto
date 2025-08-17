@@ -1,44 +1,16 @@
-use axum::{body::Body, http::Response, Router};
+use crate::common::test_router::SECRET;
+use axum::{body::Body, http::Response};
 use chrono::{Duration, Utc};
 use jsonwebtoken::{encode, EncodingKey, Header};
-use rust_axum::{
-    arguments::AppConfig,
-    build_app,
-    types::jwt::{JWTClaims, Role},
-};
+use rust_axum::types::jwt::{JWTClaims, Role};
 use serde::Deserialize;
-use std::sync::{Arc, Once};
-use test_database::TestDatabase;
 use tracing::debug;
-use tracing_subscriber::EnvFilter;
 
 pub mod test_database;
+pub mod test_router;
 
-static INIT: Once = Once::new();
-pub const TEST_TARGET: &str = "test";
-pub const MIME_JSON: &str = "application/json";
-
-// Setup tracing first.
-fn init_log() {
-    INIT.call_once(|| {
-        tracing_subscriber::fmt()
-            .with_env_filter(EnvFilter::from_default_env())
-            .with_target(true)
-            .init();
-    });
-}
-
-static SECRET: &[u8] = "TEST_SECRET".as_bytes();
-
-/// Build test Router.
-pub fn app(database: Option<Arc<TestDatabase>>) -> Router {
-    init_log();
-    let database = match database {
-        Some(p) => p,
-        None => Arc::new(TestDatabase::new()),
-    };
-    build_app(database, AppConfig::new(SECRET))
-}
+/// JSON mime type.
+pub(crate) const MIME_JSON: &str = "application/json";
 
 /// Add an authorization header token value for given role.
 pub fn add_jwt(role: Role) -> String {
@@ -68,11 +40,11 @@ pub async fn body_as_str(response: Response<Body>) -> String {
 #[allow(dead_code)]
 pub async fn dump_result(response: Response<Body>) {
     let body = body_as_str(response).await;
-    debug!(target: TEST_TARGET, "result: {body}");
+    debug!("result: {body}");
 }
 
 /// Creates a test JWT for the given role.
-pub fn test_jwt(role: Role) -> String {
+fn test_jwt(role: Role) -> String {
     let expiration = Utc::now() + Duration::minutes(25);
     let test_claims = JWTClaims {
         sub: "droberts".to_owned(),
