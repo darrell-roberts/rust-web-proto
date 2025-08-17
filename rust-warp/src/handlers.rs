@@ -13,9 +13,10 @@ fn to_warp_error(err: DatabaseError) -> WarpDatabaseError {
 
 const USER_MS_TARGET: &str = "user-ms";
 
-type Database = Arc<dyn UserDatabase>;
-
-pub async fn handle_get_user(id: UserKey, db: Database) -> Result<impl Reply, Rejection> {
+pub async fn handle_get_user<P>(id: UserKey, db: Arc<P>) -> Result<impl Reply, Rejection>
+where
+    P: UserDatabase,
+{
     event!(
       target: USER_MS_TARGET,
       Level::DEBUG,
@@ -30,10 +31,10 @@ pub async fn handle_get_user(id: UserKey, db: Database) -> Result<impl Reply, Re
 }
 
 #[instrument(skip(db, search), name = "request-span", target = "user-ms")]
-pub async fn handle_search_users(
-    search: UserSearch,
-    db: Database,
-) -> Result<impl Reply, Rejection> {
+pub async fn handle_search_users<P>(search: UserSearch, db: Arc<P>) -> Result<impl Reply, Rejection>
+where
+    P: UserDatabase,
+{
     event!(
       target: USER_MS_TARGET,
       Level::DEBUG,
@@ -48,12 +49,18 @@ pub async fn handle_search_users(
     Ok(reply::json(&users))
 }
 
-pub async fn handle_save_user(user: User, db: Database) -> Result<impl Reply, Rejection> {
+pub async fn handle_save_user<P>(user: User, db: Arc<P>) -> Result<impl Reply, Rejection>
+where
+    P: UserDatabase,
+{
     let saved_user = db.save_user(&user).await.map_err(to_warp_error)?;
     Ok(reply::json(&saved_user))
 }
 
-pub async fn handle_count_genders(db: Database) -> Result<impl Reply, Rejection> {
+pub async fn handle_count_genders<P>(db: Arc<P>) -> Result<impl Reply, Rejection>
+where
+    P: UserDatabase,
+{
     event!(target: USER_MS_TARGET, Level::DEBUG, "counting users");
     let counts = db.count_genders().await.map_err(to_warp_error)?;
     Ok(reply::json(&counts))

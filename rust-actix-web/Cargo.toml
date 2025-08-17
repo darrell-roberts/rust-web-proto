@@ -12,23 +12,22 @@ name = "rust-actix"
 actix-http = "3"
 actix-service = "2"
 async-trait = "0.1"
-futures = "0.3"
-log = "0.4"
-serde_json = "1.0"
-thiserror = "*"
-tracing = "0.1"
-tracing-actix-web = "0.7"
-user-database = { path = "../user-database" }
-# TODO: replace with jswonwebtoken
-chrono = "0.4"
+chrono.workspace = true
+clap.workspace = true
+futures.workspace = true
 hmac = "0.12"
 jwt = "0.16"
-sha2 = "0.10"
-
-[dependencies.tracing-subscriber]
-default-features = false
-features = ["json", "env-filter", "std", "ansi", "fmt"]
-version = "0.3"
+log.workspace = true
+mongodb.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+sha2.workspace = true
+thiserror.workspace = true
+tracing.workspace = true
+tracing-actix-web = "0.7"
+tracing-subscriber.workspace = true
+user-database.workspace = true
+uuid.workspace = true
 
 [dependencies.tokio]
 features = ["time"]
@@ -37,20 +36,6 @@ version = "1.47"
 [dependencies.actix-web]
 features = ["openssl"]
 version = "4"
-
-[dependencies.serde]
-version = "1.0"
-
-[dependencies.mongodb]
-version = "3.2"
-
-[dependencies.clap]
-features = ["derive"]
-version = "4.5"
-
-[dependencies.uuid]
-features = ["v4"]
-version = "1"
 
 [dependencies.openssl]
 features = ["v110"]

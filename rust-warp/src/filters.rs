@@ -8,10 +8,13 @@ use warp::Filter;
 
 const FRAMEWORK_TARGET: &str = "ms-framework";
 
-type Database = Arc<dyn UserDatabase>;
+type Database<T> = Arc<T>;
 
 /// Provides the Database API
-fn with_db(db: Database) -> impl Filter<Extract = (Database,), Error = Infallible> + Clone {
+fn with_db<P>(db: Database<P>) -> impl Filter<Extract = (Database<P>,), Error = Infallible> + Clone
+where
+    P: UserDatabase,
+{
     warp::any().map(move || db.clone())
 }
 
@@ -36,7 +39,12 @@ where
 }
 
 /// Top level filter for the User API.
-pub fn user(db: Database) -> impl Filter<Extract = impl warp::Reply, Error = Infallible> + Clone {
+pub fn user<P>(
+    db: Database<P>,
+) -> impl Filter<Extract = impl warp::Reply, Error = Infallible> + Clone
+where
+    P: UserDatabase,
+{
     let base_path = warp::path("api")
         .and(warp::path("v1"))
         .and(warp::path("user"));
@@ -76,18 +84,24 @@ async fn handle_rejection(err: warp::Rejection) -> Result<impl warp::Reply, Infa
     ))
 }
 
-pub fn get_user(
-    db: Database,
-) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
+pub fn get_user<P>(
+    db: Database<P>,
+) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone
+where
+    P: UserDatabase,
+{
     warp::path!(UserKey)
         .and(warp::get())
         .and(with_db(db))
         .and_then(handlers::handle_get_user)
 }
 
-pub fn search_users(
-    db: Database,
-) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
+pub fn search_users<P>(
+    db: Database<P>,
+) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone
+where
+    P: UserDatabase,
+{
     warp::path("search")
         .and(warp::post())
         .and(warp::body::json())
@@ -95,18 +109,24 @@ pub fn search_users(
         .and_then(handlers::handle_search_users)
 }
 
-pub fn save_user(
-    db: Database,
-) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
+pub fn save_user<P>(
+    db: Database<P>,
+) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone
+where
+    P: UserDatabase,
+{
     warp::post()
         .and(warp::body::json())
         .and(with_db(db))
         .and_then(handlers::handle_save_user)
 }
 
-pub fn count_genders(
-    db: Database,
-) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
+pub fn count_genders<P>(
+    db: Database<P>,
+) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone
+where
+    P: UserDatabase,
+{
     warp::path("counts")
         .and(with_db(db))
         .and_then(handlers::handle_count_genders)

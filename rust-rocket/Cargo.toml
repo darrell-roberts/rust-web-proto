@@ -6,47 +6,22 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-chrono = "0.4"
+chrono.workspace = true
+clap.workspace = true
+futures.workspace = true
 futures-util = "0.3"
 hmac = "0.12"
 jwt = "0.16"
-serde_json = "1.0"
-sha2 = "0.10"
-thiserror = "2.0"
-tracing = "0.1"
-user-database = { path = "../user-database" }
-
-[dependencies.tracing-subscriber]
-default-features = false
-features = ["json", "env-filter", "std", "ansi", "fmt"]
-version = "0.3"
+mongodb.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+sha2.workspace = true
+thiserror.workspace = true
+tracing.workspace = true
+tracing-subscriber.workspace = true
+user-database.workspace = true
+uuid.workspace = true
 
 [dependencies.rocket]
 features = ["json", "tls"]
 version = "0.5.1"
-
-[dependencies.serde]
-version = "1"
-
-[dependencies.mongodb]
-version = "3.2"
-
-[dependencies.clap]
-features = ["derive"]
-version = "4.5"
-
-[dependencies.uuid]
-features = ["v4"]
-version = "1"
-
-[dependencies.futures]
-version = "0.3"
-
-# [dependencies.validator]
-# version = "0.15"
-# features = ["derive"]
-
-
-# [dependencies.rocket_sync_db_pools]
-# version = "0.1.0-rc.1"
-# default-features = false

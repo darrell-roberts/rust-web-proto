@@ -2,8 +2,34 @@
 resolver = "2"
 members = [
   "user-database",
-  # "rust-warp",
+  "rust-warp",
   "rust-rocket",
   "rust-actix-web",
   "rust-axum",
 ]
+
+[workspace.dependencies]
+user-database = { path = "user-database" }
+chrono = "0.4"
+serde = "1"
+mongodb = "3.2"
+uuid = { version = "1", features = ["v4"] }
+thiserror = "2"
+futures = "0.3"
+serde_json = "1"
+clap = { version = "4.5", features = [
+  "derive",
+  "color",
+  "suggestions",
+  "wrap_help",
+] }
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", default-features = false, features = [
+  "json",
+  "env-filter",
+  "std",
+  "ansi",
+  "fmt",
+] }
+sha2 = "0.10"
+log = "0.4"

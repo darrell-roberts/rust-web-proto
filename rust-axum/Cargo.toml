@@ -9,23 +9,18 @@ axum-extra = { version = "0.10", features = ["typed-header"] }
 axum-macros = "0.5"
 axum-server = { version = "0.7", features = ["tls-rustls"] }
 base64 = "0.22"
-chrono = "0.4"
-clap = { version = "4.5", features = [
-  "derive",
-  "color",
-  "suggestions",
-  "wrap_help",
-] }
-futures = "0.3"
+chrono.workspace = true
+clap.workspace = true
+futures.workspace = true
 http = "1.3"
 http-body = "1"
 hyper = "1.6"
 jsonwebtoken = "9.3"
-mongodb = "3.2"
-serde = "1"
-serde_json = "1"
-sha2 = "0.10"
-thiserror = "2"
+mongodb.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+sha2.workspace = true
+thiserror.workspace = true
 tokio = "1"
 tower = { version = "0.5", features = ["full"] }
 tower-http = { version = "0.6", features = [
@@ -35,16 +30,10 @@ tower-http = { version = "0.6", features = [
   "trace",
 ] }
 tower-layer = "0.3"
-tracing = "0.1"
-tracing-subscriber = { version = "0.3", default-features = false, features = [
-  "json",
-  "env-filter",
-  "std",
-  "ansi",
-  "fmt",
-] }
-user-database = { path = "../user-database" }
-uuid = { version = "1", features = ["v4"] }
+tracing.workspace = true
+tracing-subscriber.workspace = true
+user-database.workspace = true
+uuid.workspace = true
 
 [dev-dependencies]
 cool_asserts = "2"

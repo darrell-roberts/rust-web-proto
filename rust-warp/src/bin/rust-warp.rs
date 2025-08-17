@@ -20,14 +20,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     info!("Using options: {server_args}");
 
-    let api = user(Arc::new(
-        MongoDatabase::new(server_args.mongo_args).await?,
-    ));
+    let api = user(Arc::new(MongoDatabase::new(server_args.mongo_args).await?));
 
     warp::serve(api)
-        .tls()
-        .cert_path(server_args.server_cert)
-        .key_path(server_args.server_key)
+        // TODO: latest warp has removed TLS
+        // .tls()
+        // .cert_path(server_args.server_cert)
+        // .key_path(server_args.server_key)
         .run(([127, 0, 0, 1], 8443))
         .await;
 
