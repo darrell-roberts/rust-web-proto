@@ -34,6 +34,7 @@ impl TestRouterBuilder {
     }
 
     /// Add an existing database.
+    #[allow(dead_code)]
     #[must_use]
     pub fn with_database(mut self, database: impl Into<Option<Arc<TestDatabase>>>) -> Self {
         self.database = database.into();
