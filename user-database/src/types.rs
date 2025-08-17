@@ -47,13 +47,13 @@ impl Deref for Email {
     }
 }
 
-static RE: LazyLock<Regex> =
+static EMAIL_REGEX: LazyLock<Regex> =
     LazyLock::new(|| Regex::new(r"[a-zA-Z0-9+._-]+@[a-zA-Z-]+\.[a-z]+").unwrap());
 
 impl Email {
     /// Validate email.
     fn is_valid(&self) -> bool {
-        RE.is_match(self)
+        EMAIL_REGEX.is_match(self)
     }
 }
 
