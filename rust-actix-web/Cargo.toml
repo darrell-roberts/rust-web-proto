@@ -11,6 +11,7 @@ name = "rust-actix"
 [dependencies]
 actix-http = "3"
 actix-service = "2"
+actix-web = { version = "4", features = ["openssl"] }
 async-trait = "0.1"
 chrono.workspace = true
 clap.workspace = true
@@ -19,24 +20,14 @@ hmac = "0.12"
 jwt = "0.16"
 log.workspace = true
 mongodb.workspace = true
+openssl = { version = "0.10", features = ["v110"] }
 serde.workspace = true
 serde_json.workspace = true
 sha2.workspace = true
 thiserror.workspace = true
+tokio = { version = "1", features = ["time"] }
 tracing.workspace = true
 tracing-actix-web = "0.7"
 tracing-subscriber.workspace = true
 user-database.workspace = true
 uuid.workspace = true
-
-[dependencies.tokio]
-features = ["time"]
-version = "1.47"
-
-[dependencies.actix-web]
-features = ["openssl"]
-version = "4"
-
-[dependencies.openssl]
-features = ["v110"]
-version = "0.10"
