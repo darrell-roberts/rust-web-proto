@@ -1,6 +1,10 @@
 use crate::common::test_router::SECRET;
 use axum::{body::Body, http::Response};
 use chrono::{Duration, Utc};
+use http::{
+    header::{AUTHORIZATION, CONTENT_TYPE},
+    Method, Request,
+};
 use jsonwebtoken::{encode, EncodingKey, Header};
 use rust_axum::types::jwt::{JWTClaims, Role};
 use serde::Deserialize;
@@ -17,6 +21,7 @@ pub fn add_jwt(role: Role) -> String {
     format!("Bearer {}", test_jwt(role))
 }
 
+/// Deserialize the response body into T.
 pub async fn body_as<T>(response: Response<Body>) -> T
 where
     T: for<'de> Deserialize<'de>,
@@ -57,4 +62,43 @@ fn test_jwt(role: Role) -> String {
         &EncodingKey::from_secret(SECRET),
     )
     .unwrap()
+}
+
+/// Common test get request.
+#[allow(dead_code)]
+pub(crate) fn get(uri: &str, role: Role) -> Result<Request<Body>, http::Error> {
+    Request::builder()
+        .uri(uri)
+        .header(AUTHORIZATION, add_jwt(role))
+        .body(Body::empty())
+}
+
+/// Common test post request.
+#[allow(dead_code)]
+pub(crate) fn post(
+    uri: &str,
+    role: Role,
+    body: impl Into<Body>,
+) -> Result<Request<Body>, http::Error> {
+    Request::builder()
+        .uri(uri)
+        .method(Method::POST)
+        .header(CONTENT_TYPE, MIME_JSON)
+        .header(AUTHORIZATION, add_jwt(role))
+        .body(body.into())
+}
+
+/// Common test put request.
+#[allow(dead_code)]
+pub(crate) fn put(
+    uri: &str,
+    role: Role,
+    body: impl Into<Body>,
+) -> Result<Request<Body>, http::Error> {
+    Request::builder()
+        .uri(uri)
+        .method(Method::PUT)
+        .header(CONTENT_TYPE, MIME_JSON)
+        .header(AUTHORIZATION, add_jwt(role))
+        .body(body.into())
 }

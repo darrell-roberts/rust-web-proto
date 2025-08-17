@@ -1,18 +1,12 @@
 //! Integration tests for routes.
 use crate::common::{
-    add_jwt, body_as, body_as_str, dump_result, test_database::test_user,
-    test_router::TestRouterBuilder, MIME_JSON,
+    body_as, body_as_str, dump_result, get, post, put, test_database::test_user,
+    test_router::TestRouterBuilder,
 };
-use axum::{
-    body::Body,
-    http::{
-        header::{AUTHORIZATION, CONTENT_TYPE},
-        Method, Request, StatusCode,
-    },
-};
+use axum::http::StatusCode;
 use cool_asserts::assert_matches;
 use rust_axum::{security::hashing::HashedUser, types::jwt::Role};
-use serde_json::{from_str, json, to_string, Value};
+use serde_json::{from_str, json, to_string, to_vec, Value};
 use tower::ServiceExt;
 use tracing::debug;
 use user_database::types::{Email, Gender, UpdateUser, User, UserKey, UserSearch};
@@ -23,13 +17,7 @@ mod common;
 async fn get_user() {
     let response = TestRouterBuilder::new()
         .build()
-        .oneshot(
-            Request::builder()
-                .uri("/api/v1/user/61c0d1954c6b974ca7000000")
-                .header(AUTHORIZATION, add_jwt(Role::Admin))
-                .body(Body::empty())
-                .unwrap(),
-        )
+        .oneshot(get("/api/v1/user/61c0d1954c6b974ca7000000", Role::Admin).unwrap())
         .await
         .unwrap();
 
@@ -42,13 +30,7 @@ async fn get_user() {
 async fn get_user_invalid_role() {
     let response = TestRouterBuilder::new()
         .build()
-        .oneshot(
-            Request::builder()
-                .uri("/api/v1/user/61c0d1954c6b974ca7000000")
-                .header(AUTHORIZATION, add_jwt(Role::User))
-                .body(Body::empty())
-                .unwrap(),
-        )
+        .oneshot(get("/api/v1/user/61c0d1954c6b974ca7000000", Role::User).unwrap())
         .await
         .unwrap();
 
@@ -60,13 +42,7 @@ async fn get_user_invalid_role() {
 async fn get_user_not_found() {
     let response = TestRouterBuilder::new()
         .build()
-        .oneshot(
-            Request::builder()
-                .uri("/api/v1/user/71c0d1954c6b974ca7000000")
-                .header(AUTHORIZATION, add_jwt(Role::Admin))
-                .body(Body::empty())
-                .unwrap(),
-        )
+        .oneshot(get("/api/v1/user/71c0d1954c6b974ca7000000", Role::Admin).unwrap())
         .await
         .unwrap();
 
@@ -75,18 +51,10 @@ async fn get_user_not_found() {
 
 #[tokio::test]
 async fn save_user() {
-    let json_user = serde_json::to_string(&test_user(None)).unwrap();
+    let json_user = to_vec(&test_user(None)).unwrap();
     let response = TestRouterBuilder::new()
         .build()
-        .oneshot(
-            Request::builder()
-                .uri("/api/v1/user")
-                .method(Method::POST)
-                .header(CONTENT_TYPE, MIME_JSON)
-                .header(AUTHORIZATION, add_jwt(Role::User))
-                .body(Body::from(json_user))
-                .unwrap(),
-        )
+        .oneshot(post("/api/v1/user", Role::User, json_user).unwrap())
         .await
         .unwrap();
 
@@ -104,23 +72,15 @@ async fn save_user() {
 #[tokio::test]
 async fn save_user_validation_rejection() {
     let json_user = r#"{
-    "name": "Test User",
-    "age": 1,
-    "email": "bad_value",
-    "gender": "Male"
-  }"#;
+        "name": "Test User",
+        "age": 1,
+        "email": "bad_value",
+        "gender": "Male"
+   }"#;
 
     let response = TestRouterBuilder::new()
         .build()
-        .oneshot(
-            Request::builder()
-                .uri("/api/v1/user")
-                .method(Method::POST)
-                .header(CONTENT_TYPE, MIME_JSON)
-                .header(AUTHORIZATION, add_jwt(Role::User))
-                .body(Body::from(json_user))
-                .unwrap(),
-        )
+        .oneshot(post("/api/v1/user", Role::User, json_user).unwrap())
         .await
         .unwrap();
 
@@ -159,20 +119,11 @@ async fn update_user() {
     };
 
     let update_user_json = to_string(&update_user).unwrap();
-
     debug!("update user: {update_user_json}");
 
     let response = TestRouterBuilder::new()
         .build()
-        .oneshot(
-            Request::builder()
-                .uri("/api/v1/user")
-                .method(Method::PUT)
-                .header(CONTENT_TYPE, MIME_JSON)
-                .header(AUTHORIZATION, add_jwt(Role::Admin))
-                .body(Body::from(update_user_json))
-                .unwrap(),
-        )
+        .oneshot(put("/api/v1/user", Role::Admin, update_user_json).unwrap())
         .await
         .unwrap();
     let status = response.status();
@@ -193,20 +144,11 @@ async fn update_user_bad_hash() {
     };
 
     let update_user_json = to_string(&update_user).unwrap();
-
     debug!("update user: {update_user_json}");
 
     let response = TestRouterBuilder::new()
         .build()
-        .oneshot(
-            Request::builder()
-                .uri("/api/v1/user")
-                .method(Method::PUT)
-                .header(CONTENT_TYPE, MIME_JSON)
-                .header(AUTHORIZATION, add_jwt(Role::Admin))
-                .body(Body::from(update_user_json))
-                .unwrap(),
-        )
+        .oneshot(put("/api/v1/user", Role::Admin, update_user_json).unwrap())
         .await
         .unwrap();
     assert_eq!(response.status(), StatusCode::UNAUTHORIZED);
@@ -227,19 +169,11 @@ async fn search_users() {
         gender: None,
     };
 
-    let search_json = to_string(&search).unwrap();
+    let search_json = to_vec(&search).unwrap();
 
     let response = TestRouterBuilder::new()
         .build()
-        .oneshot(
-            Request::builder()
-                .uri("/api/v1/user/search")
-                .method(Method::POST)
-                .header(CONTENT_TYPE, MIME_JSON)
-                .header(AUTHORIZATION, add_jwt(Role::Admin))
-                .body(Body::from(search_json))
-                .unwrap(),
-        )
+        .oneshot(post("/api/v1/user/search", Role::Admin, search_json).unwrap())
         .await
         .unwrap();
 
@@ -261,13 +195,7 @@ async fn search_users() {
 async fn count_users() {
     let response = TestRouterBuilder::new()
         .build()
-        .oneshot(
-            Request::builder()
-                .uri("/api/v1/user/counts")
-                .header(AUTHORIZATION, add_jwt(Role::Admin))
-                .body(Body::empty())
-                .unwrap(),
-        )
+        .oneshot(get("/api/v1/user/counts", Role::Admin).unwrap())
         .await
         .unwrap();
 
@@ -282,13 +210,7 @@ async fn count_users() {
 async fn download_users() {
     let response = TestRouterBuilder::new()
         .build()
-        .oneshot(
-            Request::builder()
-                .uri("/api/v1/user/download")
-                .header(AUTHORIZATION, add_jwt(Role::Admin))
-                .body(Body::empty())
-                .unwrap(),
-        )
+        .oneshot(get("/api/v1/user/download", Role::Admin).unwrap())
         .await
         .unwrap();
 

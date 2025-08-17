@@ -31,6 +31,7 @@ impl Deref for TestDatabase {
 }
 
 impl TestDatabase {
+    /// Create a new test database with a single test user.
     fn new() -> Self {
         // Setup some test data.
         let mut map = HashMap::new();
