@@ -43,9 +43,12 @@ async fn get_user_not_found() {
 
 #[tokio::test]
 async fn save_user() {
-    let json_user = to_vec(&test_user(None)).unwrap();
     let response = TestRouterBuilder::new()
-        .post("/api/v1/user", Role::User, json_user)
+        .post(
+            "/api/v1/user",
+            Role::User,
+            to_vec(&test_user(None)).unwrap(),
+        )
         .await;
 
     assert_eq!(response.status(), StatusCode::OK);
@@ -153,10 +156,8 @@ async fn search_users() {
         gender: None,
     };
 
-    let search_json = to_vec(&search).unwrap();
-
     let response = TestRouterBuilder::new()
-        .post("/api/v1/user/search", Role::Admin, search_json)
+        .post("/api/v1/user/search", Role::Admin, to_vec(&search).unwrap())
         .await;
 
     assert_eq!(response.status(), StatusCode::OK);

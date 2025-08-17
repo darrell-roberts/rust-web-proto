@@ -1,8 +1,4 @@
-use crate::common::test_router::SECRET;
 use axum::{body::Body, http::Response};
-use chrono::{Duration, Utc};
-use jsonwebtoken::{encode, EncodingKey, Header};
-use rust_axum::types::jwt::{JWTClaims, Role};
 use serde::Deserialize;
 use tracing::debug;
 
@@ -11,11 +7,6 @@ pub mod test_router;
 
 /// JSON mime type.
 pub(crate) const MIME_JSON: &str = "application/json";
-
-/// Add an authorization header token value for given role.
-pub fn add_jwt(role: Role) -> String {
-    format!("Bearer {}", test_jwt(role))
-}
 
 /// Deserialize the response body into T.
 pub async fn body_as<T>(response: Response<Body>) -> T
@@ -42,20 +33,4 @@ pub async fn body_as_str(response: Response<Body>) -> String {
 pub async fn dump_result(response: Response<Body>) {
     let body = body_as_str(response).await;
     debug!("result: {body}");
-}
-
-/// Creates a test JWT for the given role.
-fn test_jwt(role: Role) -> String {
-    let expiration = Utc::now() + Duration::minutes(25);
-    let test_claims = JWTClaims {
-        sub: "droberts".to_owned(),
-        role,
-        exp: expiration.timestamp(),
-    };
-    encode(
-        &Header::default(),
-        &test_claims,
-        &EncodingKey::from_secret(SECRET),
-    )
-    .unwrap()
 }

@@ -1,11 +1,17 @@
 //! Test Router
-use crate::common::{add_jwt, test_database::TestDatabase, MIME_JSON};
+use crate::common::{test_database::TestDatabase, MIME_JSON};
 use axum::{body::Body, Router};
+use chrono::{Duration, Utc};
 use http::{
     header::{AUTHORIZATION, CONTENT_TYPE},
     Method, Request, Uri,
 };
-use rust_axum::{arguments::AppConfig, build_app, types::jwt::Role};
+use jsonwebtoken::{encode, EncodingKey, Header};
+use rust_axum::{
+    arguments::AppConfig,
+    build_app,
+    types::jwt::{JWTClaims, Role},
+};
 use std::{
     future::Future,
     sync::{Arc, Once},
@@ -157,4 +163,25 @@ fn app(database: Option<Arc<TestDatabase>>) -> Router {
         None => Arc::new(TestDatabase::default()),
     };
     build_app(database, AppConfig::new(SECRET))
+}
+
+/// Add an authorization header token value for given role.
+fn add_jwt(role: Role) -> String {
+    format!("Bearer {}", test_jwt(role))
+}
+
+/// Creates a test JWT for the given role.
+fn test_jwt(role: Role) -> String {
+    let expiration = Utc::now() + Duration::minutes(25);
+    let test_claims = JWTClaims {
+        sub: "droberts".to_owned(),
+        role,
+        exp: expiration.timestamp(),
+    };
+    encode(
+        &Header::default(),
+        &test_claims,
+        &EncodingKey::from_secret(SECRET),
+    )
+    .unwrap()
 }
