@@ -1,12 +1,10 @@
 use crate::handlers;
 use serde_json::json;
 use std::{convert::Infallible, sync::Arc};
-use tracing::{event, info_span, Level};
+use tracing::{debug, info_span};
 use user_database::{database::UserDatabase, types::UserKey};
 use uuid::Uuid;
 use warp::Filter;
-
-const FRAMEWORK_TARGET: &str = "ms-framework";
 
 type Database<T> = Arc<T>;
 
@@ -28,12 +26,12 @@ where
     warp::any()
         .map(|| warp::header::optional::<String>("Host"))
         .map(|_h| {
-            event!(target: FRAMEWORK_TARGET, Level::DEBUG, "Before filter");
+            debug!("Before filter");
         })
         .untuple_one()
         .and(filter)
         .map(|res| {
-            event!(target: FRAMEWORK_TARGET, Level::DEBUG, "After filter");
+            debug!("After filter");
             res
         })
 }
@@ -57,19 +55,20 @@ where
     );
 
     routes
-    .with(warp::filters::compression::gzip())
-    .with(warp::trace(|req| {
-      let headers = req.request_headers();
-      let req_id = headers.get("x-request-id")
-        .and_then(|v| v.to_str().ok().map(String::from))
-        .unwrap_or_else(|| Uuid::new_v4().to_string());
-      info_span!(target: FRAMEWORK_TARGET, "request-span", %req_id, method = %req.method(), path = %req.path())
-    }))
-    // .map(|reply| {
-    //   warp::reply::with_header(reply, "x-request-id", "abc")
-    // })
-    .recover(handle_rejection)
-    .with(warp::wrap_fn(test_wrapper))
+        .with(warp::filters::compression::gzip())
+        .with(warp::trace(|req| {
+            let headers = req.request_headers();
+            let req_id = headers
+                .get("x-request-id")
+                .and_then(|v| v.to_str().ok().map(String::from))
+                .unwrap_or_else(|| Uuid::new_v4().to_string());
+            info_span!("request-span", %req_id, method = %req.method(), path = %req.path())
+        }))
+        // .map(|reply| {
+        //   warp::reply::with_header(reply, "x-request-id", "abc")
+        // })
+        .recover(handle_rejection)
+        .with(warp::wrap_fn(test_wrapper))
 }
 
 async fn handle_rejection(err: warp::Rejection) -> Result<impl warp::Reply, Infallible> {
