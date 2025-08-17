@@ -1,9 +1,9 @@
 [workspace]
 resolver = "2"
 members = [
-    "user-database",
-    # "rust-warp",
-    "rust-rocket",
-    "rust-actix-web",
-    "rust-axum",
+  "user-database",
+  # "rust-warp",
+  "rust-rocket",
+  "rust-actix-web",
+  "rust-axum",
 ]

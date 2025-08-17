@@ -10,37 +10,37 @@ name = "rust-warp"
 [lib]
 
 [dependencies]
+async-trait = "0.1"
+futures = "0.3"
+mongodb = "3.2"
 serde = "1.0"
 serde_json = "1.0"
-mongodb = "3.2"
-futures = "0.3"
-async-trait = "0.1"
 user-database = { path = "../user-database" }
 
 [dependencies.tracing]
-version = "0.1"
 features = ["log"]
+version = "0.1"
 
 [dependencies.tracing-subscriber]
-version = "0.3"
 default-features = true
 features = ["json", "env-filter", "fmt"]
+version = "0.3"
 
 [dependencies.clap]
-version = "4.5"
 features = ["derive"]
+version = "4.5"
 
 [dependencies.uuid]
-version = "1"
 features = ["v4"]
+version = "1"
 
 [dependencies.warp]
-version = "0.4"
 features = ["server", "compression-gzip"]
+version = "0.4"
 
 [dependencies.tokio]
-version = "1"
 features = ["full"]
+version = "1"
 
 [dev-dependencies]
 flate2 = "1"
