@@ -6,7 +6,7 @@ edition = "2021"
 [dependencies]
 axum = { version = "0.8", features = ["tower-log"] }
 axum-extra = { version = "0.10", features = ["typed-header"] }
-axum-macros = "0.5"
+# axum-macros = "0.5"
 axum-server = { version = "0.7", features = ["tls-rustls"] }
 base64 = "0.22"
 chrono.workspace = true
