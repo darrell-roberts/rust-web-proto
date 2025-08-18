@@ -1,3 +1,4 @@
+//! Handlers.
 use crate::types::WarpDatabaseError;
 use std::sync::Arc;
 use tracing::{debug, instrument};
@@ -24,7 +25,7 @@ where
     }
 }
 
-#[instrument(skip(db, search), name = "request-span", target = "user-ms")]
+#[instrument(skip_all, name = "request-span", target = "user-ms")]
 pub async fn handle_search_users<P>(search: UserSearch, db: Arc<P>) -> Result<impl Reply, Rejection>
 where
     P: UserDatabase,

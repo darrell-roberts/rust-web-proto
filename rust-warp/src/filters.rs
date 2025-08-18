@@ -1,3 +1,4 @@
+//! Filter functions
 use crate::handlers;
 use serde_json::json;
 use std::{convert::Infallible, sync::Arc};
