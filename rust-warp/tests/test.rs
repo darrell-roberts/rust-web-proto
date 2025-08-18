@@ -8,7 +8,7 @@ use std::{
     io::Read,
     sync::{Arc, Once},
 };
-use tracing::{event, Level};
+use tracing::debug;
 use tracing_subscriber::EnvFilter;
 use user_database::database::DatabaseResult;
 use user_database::{
@@ -16,8 +16,6 @@ use user_database::{
     types::{Email, Gender, UpdateUser, User, UserKey, UserSearch},
 };
 use warp::{hyper::body::Bytes, Filter, Reply};
-
-const TEST_TARGET: &str = "test";
 
 static INIT: Once = Once::new();
 
@@ -116,6 +114,7 @@ fn decompress_body(b: Bytes) -> String {
     s
 }
 
+/// Test get user route.
 #[tokio::test]
 async fn test_get_user() {
     let filter = test_user_filter();
@@ -127,7 +126,7 @@ async fn test_get_user() {
         .map(|b| from_str::<Value>(&b).unwrap());
 
     let body = res.body();
-    event!(target: TEST_TARGET, Level::DEBUG, "body: {:?}", body);
+    debug!("body: {:?}", body);
     assert_eq!(res.status(), 200, "status is ok");
     assert_eq!(
         res.into_body(),
@@ -140,7 +139,7 @@ async fn test_get_user() {
     )
 }
 
-// Bad bson. Filter won't route to handler.
+/// Bad bson. Filter won't route to handler.
 #[tokio::test]
 async fn test_get_user_404() {
     let filter = test_user_filter();
@@ -150,12 +149,11 @@ async fn test_get_user_404() {
         .await
         .map(decompress_body);
 
-    event!(target: TEST_TARGET, Level::DEBUG, "Body: {:?}", res.body());
-
+    debug!("Body: {:?}", res.body());
     assert_eq!(res.status(), 404);
 }
 
-// Good bson. Does not find result.
+/// Good bson. Does not find result.
 #[tokio::test]
 async fn test_get_user_no_user() {
     let filter = test_user_filter();
@@ -165,7 +163,6 @@ async fn test_get_user_no_user() {
         .await
         .map(decompress_body);
 
-    event!(target: TEST_TARGET, Level::DEBUG, "Body: {:?}", res.body());
-
+    debug!("Body: {:?}", res.body());
     assert_eq!(res.status(), 404);
 }

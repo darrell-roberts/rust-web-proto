@@ -1,3 +1,4 @@
+//! Re-usable functions for integration tests.
 use axum::{body::Body, http::Response};
 use serde::Deserialize;
 use tracing::debug;

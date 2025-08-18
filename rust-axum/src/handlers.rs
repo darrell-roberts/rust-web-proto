@@ -1,4 +1,2 @@
-/*!
-Handlers for api route endpoints.
-*/
+//! Handlers for api route endpoints.
 pub mod user_handlers;
