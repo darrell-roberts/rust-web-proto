@@ -1,9 +1,8 @@
-use crate::common::FRAMEWORK_TARGET;
 use actix_web::{body, http, HttpResponse, ResponseError};
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
-use tracing::{event, Level};
+use tracing::debug;
 use user_database::database::DatabaseError;
 
 #[derive(Debug, Error)]
@@ -37,7 +36,7 @@ pub enum Role {
 /// authorizing requests.
 #[derive(Deserialize, Serialize, Debug, Clone)]
 pub struct JWTClaims {
-    /// Subjet. This is the user identifiier.
+    /// Subject. This is the user identifier.
     pub sub: String,
     // Roles for the subject.
     pub role: Role,
@@ -72,11 +71,7 @@ impl JWTClaims {
         let now = Utc::now();
         let exp_minutes = (exp - now).num_minutes();
 
-        event!(
-          target: FRAMEWORK_TARGET,
-          Level::DEBUG,
-          "Jwt expires in: {exp_minutes} minutes"
-        );
+        debug!("Jwt expires in: {exp_minutes} minutes");
 
         if exp_minutes <= 0 {
             Err(JWTError::Expired)

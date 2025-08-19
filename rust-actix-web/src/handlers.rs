@@ -1,16 +1,15 @@
-use crate::{
-    common::USER_MS_TARGET,
-    types::{AdminAccess, HandlerError, UserAccess},
-};
+//! Router handler functions
+use crate::types::{AdminAccess, HandlerError, UserAccess};
 use actix_http::{ResponseBuilder, StatusCode};
 use actix_web::{get, post, put, web, Responder, Result};
 use std::sync::Arc;
-use tracing::{event, Level};
+use tracing::debug;
 use user_database::{
     database::UserDatabaseDynSafe,
     types::{UpdateUser, User, UserKey, UserSearch},
 };
 
+/// Database api from application state
 type Database = web::Data<Arc<dyn UserDatabaseDynSafe>>;
 
 #[get("{id}")]
@@ -19,16 +18,9 @@ pub async fn get_user(
     id: web::Path<UserKey>,
     claims: AdminAccess,
 ) -> Result<impl Responder, HandlerError> {
-    event!(
-      target: USER_MS_TARGET,
-      Level::DEBUG,
-      "Received id: {id:?} with claims: {claims:?}"
-    );
-
+    debug!("Received id: {id:?} with claims: {claims:?}");
     let user = db.get_user(&id).await?;
-
-    event!(target: USER_MS_TARGET, Level::DEBUG, "db result: {user:?}");
-
+    debug!("db result: {user:?}");
     Ok(web::Json(user))
 }
 
@@ -38,11 +30,7 @@ pub async fn save_user(
     db: Database,
     _claims: UserAccess,
 ) -> Result<impl Responder, HandlerError> {
-    event!(
-      target: USER_MS_TARGET,
-      Level::DEBUG,
-      "saving user: {user:?}"
-    );
+    debug!("saving user: {user:?}");
     let saved_user = db.save_user(&user).await?;
     Ok(web::Json(saved_user))
 }
@@ -53,11 +41,7 @@ pub async fn update_user(
     user: web::Json<UpdateUser>,
     _claims: AdminAccess,
 ) -> Result<impl Responder, HandlerError> {
-    event!(
-      target: USER_MS_TARGET,
-      Level::DEBUG,
-      "updating user with {user:?}"
-    );
+    debug!("updating user with {user:?}");
     db.update_user(&user).await?;
     Ok(ResponseBuilder::new(StatusCode::OK))
 }
@@ -68,11 +52,7 @@ pub async fn search_users(
     db: Database,
     _claims: AdminAccess,
 ) -> Result<impl Responder, HandlerError> {
-    event!(
-      target: USER_MS_TARGET,
-      Level::DEBUG,
-      "Searching for users with {user_search:?}"
-    );
+    debug!("Searching for users with {user_search:?}");
     let results = db.search_users(&user_search).await?;
     Ok(web::Json(results))
 }
@@ -82,12 +62,8 @@ pub async fn count_users(
     db: Database,
     claims: AdminAccess,
 ) -> Result<impl Responder, HandlerError> {
-    event!(target: USER_MS_TARGET, Level::DEBUG, "Claims: {claims:?}");
+    debug!("Claims: {claims:?}");
     let counts = db.count_genders().await?;
-    event!(
-      target: USER_MS_TARGET,
-      Level::DEBUG,
-      "User counts: {counts:?}"
-    );
+    debug!("User counts: {counts:?}");
     Ok(web::Json(counts))
 }

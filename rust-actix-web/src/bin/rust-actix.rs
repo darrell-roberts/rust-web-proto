@@ -1,14 +1,13 @@
 use actix_web::{web, App, HttpServer};
 use clap::Parser;
 use rust_actix_web::{
-    common::USER_MS_TARGET,
     handlers, init_tls,
     middleware::{create_test_jwt, JwtAuth},
     types::Role,
     ProgramArgs,
 };
 use std::{process, sync::Arc};
-use tracing::{event, Level};
+use tracing::{debug, error};
 use tracing_actix_web::TracingLogger;
 use tracing_subscriber::EnvFilter;
 use user_database::{database::UserDatabaseDynSafe, mongo_database::MongoDatabase};
@@ -27,19 +26,8 @@ async fn main() -> Result<(), std::io::Error> {
 
     let tls_opts = init_tls(&program_opts);
 
-    event!(
-      target: USER_MS_TARGET,
-      Level::DEBUG,
-      "Test admin jwt: {}",
-      create_test_jwt(Role::Admin).unwrap()
-    );
-
-    event!(
-      target: USER_MS_TARGET,
-      Level::DEBUG,
-      "Test user jwt: {}",
-      create_test_jwt(Role::User).unwrap()
-    );
+    debug!("Test admin jwt: {}", create_test_jwt(Role::Admin).unwrap());
+    debug!("Test user jwt: {}", create_test_jwt(Role::User).unwrap());
 
     match MongoDatabase::new(program_opts.mongo_opts).await {
         Ok(database) => {
@@ -64,7 +52,7 @@ async fn main() -> Result<(), std::io::Error> {
             .await
         }
         Err(e) => {
-            event!(Level::ERROR, "Failed to connect to database: {}", e);
+            error!("Failed to connect to database: {}", e);
             process::exit(1);
         }
     }
