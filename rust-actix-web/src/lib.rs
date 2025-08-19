@@ -3,7 +3,6 @@ use openssl::ssl::{SslAcceptor, SslAcceptorBuilder, SslFiletype, SslMethod};
 use std::path::PathBuf;
 use user_database::MongoArgs;
 
-pub mod common;
 pub mod handlers;
 pub mod middleware;
 mod responders;

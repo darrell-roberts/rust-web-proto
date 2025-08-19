@@ -1,4 +1,4 @@
-use crate::common::FRAMEWORK_TARGET;
+//! Middleware
 use crate::types::{AdminAccess, JWTClaims, JWTError, Role, UserAccess};
 use actix_service::{Service, Transform};
 use actix_web::{
@@ -17,7 +17,7 @@ use jwt::{SignWithKey, VerifyWithKey};
 use sha2::Sha256;
 use std::{clone::Clone, pin::Pin, rc::Rc};
 use thiserror::Error;
-use tracing::{event, Level};
+use tracing::debug;
 
 #[derive(Debug)]
 pub struct JwtAuth(Rc<Inner>);
@@ -77,29 +77,16 @@ where
     fn call(&self, req: ServiceRequest) -> Self::Future {
         match self.extract_jwt(&req) {
             Ok(claims) => {
-                event!(
-                  target: FRAMEWORK_TARGET,
-                  Level::DEBUG,
-                  "parsed claims: {claims:?}"
-                );
+                debug!("parsed claims: {claims:?}");
                 req.extensions_mut().insert::<JWTClaims>(claims);
             }
             Err(e) => {
-                event!(
-                  target: FRAMEWORK_TARGET,
-                  Level::ERROR,
-                  "JWT parse failed: {e}"
-                );
+                debug!("JWT parse failed: {e}");
                 return Box::pin(async move { Err(actix_web::Error::from(e)) });
             }
         }
 
-        let fut = self.service.call(req);
-
-        Box::pin(async move {
-            let res = fut.await?;
-            Ok(res)
-        })
+        Box::pin(self.service.call(req))
     }
 }
 
@@ -137,9 +124,7 @@ impl<S> JwtMiddleware<S> {
       .map(|s| &s[7..]) // Drop "Bearer "
     {
       Some(jwt_token) => {
-        event!(
-          target: FRAMEWORK_TARGET,
-          Level::DEBUG,
+        debug!(
           "{} {} jwt_token: {jwt_token}",
           req.method(),
           req.uri()
