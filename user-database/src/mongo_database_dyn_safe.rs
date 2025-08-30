@@ -6,15 +6,14 @@ support generics in the route functions.
 */
 use crate::{
     database::{DatabaseError, DatabaseResult, UserDatabase, UserDatabaseDynSafe},
-    mongo_database::MongoDatabase,
     types::{UpdateUser, User, UserKey, UserSearch},
 };
 use serde_json::Value;
 use std::{future::Future, pin::Pin};
 use tracing::instrument;
 
-// Simply delegate to the non dyn safe trait impl and pin box it.
-impl UserDatabaseDynSafe for MongoDatabase {
+// For all types that implement the non dyn safe we proxy and wrap in a dyn safe implementation.
+impl<T: UserDatabase> UserDatabaseDynSafe for T {
     fn get_user<'a>(
         &'a self,
         id: &'a UserKey,
