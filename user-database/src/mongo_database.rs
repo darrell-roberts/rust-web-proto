@@ -5,7 +5,10 @@ use crate::{
     types::{Email, Gender, UpdateUser, User, UserKey, UserSearch},
     MongoArgs,
 };
-use futures::stream::{Stream, TryStreamExt};
+use futures::{
+    stream::{Stream, TryStreamExt},
+    StreamExt,
+};
 use mongodb::{
     bson::{doc, oid::ObjectId, Bson, Document},
     results::InsertOneResult,
@@ -14,7 +17,7 @@ use mongodb::{
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::ops::Deref;
-use tracing::{debug, instrument};
+use tracing::{debug, error, instrument};
 
 const COLLECTION_NAME: &str = "users";
 
@@ -133,15 +136,15 @@ impl UserDatabase for MongoDatabase {
         Ok(docs)
     }
 
-    async fn download(
-        &self,
-    ) -> DatabaseResult<impl Stream<Item = DatabaseResult<User>> + 'static + Send> {
-        Ok(self
-            .user_collection()
-            .find(doc! {})
-            .await?
-            .map_ok(User::from)
-            .map_err(Into::into))
+    async fn download(&self) -> impl Stream<Item = DatabaseResult<User>> + 'static + Send {
+        let cursor = self.user_collection().find(doc! {}).await;
+        match cursor {
+            Ok(c) => c.map_ok(User::from).map_err(Into::into).left_stream(),
+            Err(err) => {
+                error!("Failed to get cursor for download {err}");
+                futures::stream::iter([]).right_stream()
+            }
+        }
     }
 }
 

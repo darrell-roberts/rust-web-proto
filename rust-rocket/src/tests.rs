@@ -125,10 +125,8 @@ impl UserDatabase for TestDatabase {
         ])
     }
 
-    async fn download(
-        &self,
-    ) -> DatabaseResult<impl futures::Stream<Item = DatabaseResult<User>> + 'static + Send> {
-        Ok(futures::stream::iter([]))
+    async fn download(&self) -> impl futures::Stream<Item = DatabaseResult<User>> + 'static + Send {
+        futures::stream::iter([])
     }
 }
 

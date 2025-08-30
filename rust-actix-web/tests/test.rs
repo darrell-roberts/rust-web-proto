@@ -1,13 +1,22 @@
 use actix_http::header::TryIntoHeaderPair;
 use actix_service::Service;
-use actix_web::{body::MessageBody, dev, http, test, web, App};
+use actix_web::{
+    body::{self, MessageBody},
+    dev,
+    rt::pin,
+    test, web, App,
+};
 use rust_actix_web::{
     handlers,
     middleware::{create_test_jwt, JwtAuth},
     types::Role,
 };
 use serde_json::{json, Value};
-use std::sync::{Arc, Once};
+use std::{
+    future,
+    sync::{Arc, Once},
+};
+use tracing::info;
 use tracing_actix_web::TracingLogger;
 use tracing_subscriber::EnvFilter;
 use user_database::database::{DatabaseResult, UserDatabase, UserDatabaseDynSafe};
@@ -80,10 +89,30 @@ impl UserDatabase for TestDatabase {
         ])
     }
 
-    async fn download(
-        &self,
-    ) -> DatabaseResult<impl futures::Stream<Item = DatabaseResult<User>> + 'static + Send> {
-        Ok(futures::stream::iter([]))
+    async fn download(&self) -> impl futures::Stream<Item = DatabaseResult<User>> + 'static + Send {
+        futures::stream::iter([
+            Ok(User {
+                id: Some(UserKey("key1".into())),
+                name: "Test User 1".into(),
+                age: 100,
+                email: Email("test1@test.com".into()),
+                gender: Gender::Male,
+            }),
+            Ok(User {
+                id: Some(UserKey("key2".into())),
+                name: "Test User 2".into(),
+                age: 100,
+                email: Email("test2@test.com".into()),
+                gender: Gender::Male,
+            }),
+            Ok(User {
+                id: Some(UserKey("key3".into())),
+                name: "Test User 3".into(),
+                age: 100,
+                email: Email("test3@test.com".into()),
+                gender: Gender::Male,
+            }),
+        ])
     }
 }
 
@@ -101,8 +130,9 @@ async fn get_service() -> impl Service<
             .service(
                 web::scope("/api/v1/user")
                     .service(handlers::count_users)
-                    .service(handlers::get_user)
                     .service(handlers::search_users)
+                    .service(handlers::download_users)
+                    .service(handlers::get_user)
                     .service(handlers::save_user)
                     .service(handlers::update_user),
             ),
@@ -121,49 +151,56 @@ fn jwt_header(role: Role) -> impl TryIntoHeaderPair {
 async fn get_user() {
     init_log();
     let service = get_service().await;
-    let req = test::TestRequest::with_uri("/api/v1/user/61c0d1954c6b974ca7000000")
+    let uri = "/api/v1/user/61c0d1954c6b974ca7000000";
+    let req = test::TestRequest::with_uri(uri)
         .insert_header(jwt_header(Role::Admin))
         .to_request();
 
     let res = service.call(req).await.unwrap();
 
-    assert_eq!(res.status(), http::StatusCode::OK);
+    assert!(res.status().is_success());
+    dump_body(res.into_body(), uri).await;
 }
 
 #[actix_web::test]
 async fn count_users() {
     init_log();
     let service = get_service().await;
-    let req = test::TestRequest::with_uri("/api/v1/user/counts")
+    let uri = "/api/v1/user/counts";
+    let req = test::TestRequest::with_uri(uri)
         .insert_header(jwt_header(Role::Admin))
         .to_request();
 
     let res = service.call(req).await.unwrap();
+    assert!(res.status().is_success());
 
-    assert_eq!(res.status(), http::StatusCode::OK);
+    dump_body(res.into_body(), uri).await;
 }
 
 #[actix_web::test]
 async fn save_user() {
     init_log();
     let service = get_service().await;
+    let uri = "/api/v1/user";
     let req = test::TestRequest::post()
-        .uri("/api/v1/user")
+        .uri(uri)
         .insert_header(jwt_header(Role::User))
         .set_json(test_user())
         .to_request();
 
     let res = service.call(req).await.unwrap();
 
-    assert_eq!(res.status(), http::StatusCode::OK);
+    assert!(res.status().is_success());
+    dump_body(res.into_body(), uri).await;
 }
 
 #[actix_web::test]
 async fn search_users() {
     init_log();
     let service = get_service().await;
+    let uri = "/api/v1/user/search";
     let req = test::TestRequest::post()
-        .uri("/api/v1/user/search")
+        .uri(uri)
         .insert_header(jwt_header(Role::Admin))
         .set_json(UserSearch {
             email: Some(Email("some@where.com".to_owned())),
@@ -173,16 +210,17 @@ async fn search_users() {
         .to_request();
 
     let res = service.call(req).await.unwrap();
-
-    assert_eq!(res.status(), http::StatusCode::OK);
+    assert!(res.status().is_success());
+    dump_body(res.into_body(), uri).await;
 }
 
 #[actix_web::test]
 async fn update_user() {
     init_log();
     let service = get_service().await;
+    let uri = "/api/v1/user";
     let req = test::TestRequest::put()
-        .uri("/api/v1/user")
+        .uri(uri)
         .insert_header(jwt_header(Role::Admin))
         .set_json(UpdateUser {
             id: UserKey("some_key".to_owned()),
@@ -195,5 +233,48 @@ async fn update_user() {
 
     let res = service.call(req).await.unwrap();
 
-    assert_eq!(res.status(), http::StatusCode::OK);
+    assert!(res.status().is_success());
+    dump_body(res.into_body(), uri).await;
+}
+
+#[actix_web::test]
+async fn test_download() {
+    init_log();
+
+    let uri = "/api/v1/user/download";
+
+    let service = get_service().await;
+    let req = test::TestRequest::with_uri(uri)
+        .insert_header(jwt_header(Role::Admin))
+        .to_request();
+
+    let res = service.call(req).await.unwrap();
+    assert!(res.status().is_success());
+    let body = res.into_body();
+
+    pin!(body);
+    for i in 0..3 {
+        let bytes = future::poll_fn(|cx| body.as_mut().poll_next(cx))
+            .await
+            .unwrap();
+        match bytes {
+            Ok(bytes) => {
+                info!("{i} {uri} body: {}", String::from_utf8_lossy(&bytes));
+            }
+            Err(_) => panic!("No chunk"),
+        }
+    }
+}
+
+async fn dump_body(body: impl MessageBody, uri: &str) {
+    pin!(body);
+
+    let bytes = body::to_bytes(body).await;
+
+    match bytes {
+        Ok(bytes) => {
+            info!("{uri} body: {}", String::from_utf8_lossy(&bytes));
+        }
+        Err(_) => panic!("Test failed"),
+    }
 }

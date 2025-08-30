@@ -3,13 +3,12 @@ use crate::{
     types::{AdminAccess, ErrorResponder, JsonValidation, UserAccess, UserKeyReq, USER_MS_TARGET},
 };
 use mongodb::bson::doc;
-use rocket::{response::stream::ByteStream, serde::json::Json, State};
+use rocket::{serde::json::Json, State};
 use serde_json::Value;
 use std::sync::Arc;
 use tracing::{event, Level};
 use user_database::{
-    database::{UserDatabase as _, UserDatabaseDynSafe},
-    mongo_database::MongoDatabase,
+    database::UserDatabaseDynSafe,
     types::{UpdateUser, User, UserSearch},
 };
 
@@ -88,15 +87,19 @@ pub async fn find_users(
     Ok(Json(result))
 }
 
+/*
 // Stream all users as json.
 #[get("/download")]
 pub async fn download(
-    db: &State<MongoDatabase>,
+    db: &UserDatabase,
     req_id: RequestId,
-    #[allow(unused)] role: AdminAccess,
-) -> HandlerResult<ByteStream![Vec<u8> + '_]> {
-    let stream = db.download().await?;
-    let bstream = ByteStream! {
+    _role: AdminAccess,
+) -> ByteStream![Vec<u8> + '_] {
+    let stream = db.download();
+
+    ByteStream! {
+        let stream = stream.await;
+        futures::pin_mut!(stream);
         for await user in stream {
           match user {
             Ok(u) => yield serde_json::to_string(&u).unwrap_or_default().into_bytes(),
@@ -106,6 +109,6 @@ pub async fn download(
             },
           }
         }
-    };
-    Ok(bstream)
+    }
 }
+*/

@@ -72,10 +72,8 @@ impl UserDatabase for TestDatabase {
         Err(DatabaseError::TestError)
     }
 
-    async fn download(
-        &self,
-    ) -> DatabaseResult<impl futures::Stream<Item = DatabaseResult<User>> + 'static> {
-        Ok(stream::iter([
+    async fn download(&self) -> impl futures::Stream<Item = DatabaseResult<User>> + 'static {
+        stream::iter([
             Ok(User {
                 id: Some(UserKey("key1".into())),
                 name: "Test User 1".into(),
@@ -97,7 +95,7 @@ impl UserDatabase for TestDatabase {
                 email: Email("test3@test.com".into()),
                 gender: Gender::Male,
             }),
-        ]))
+        ])
     }
 }
 

@@ -13,26 +13,30 @@ pub type DatabaseResult<T> = Result<T, DatabaseError>;
 pub trait UserDatabase: Send + Sync + Debug {
     /// Lookup a user from database storage.
     fn get_user(&self, id: &UserKey) -> impl Future<Output = DatabaseResult<Option<User>>> + Send;
+
     /// Save a user to database storage.
     fn save_user(&self, user: &User) -> impl Future<Output = DatabaseResult<User>> + Send;
+
     /// Update a user in database storage.
     fn update_user(&self, user: &UpdateUser) -> impl Future<Output = DatabaseResult<()>> + Send;
+
     /// Remove a user from database storage.
     fn remove_user(&self, user: &UserKey) -> impl Future<Output = DatabaseResult<()>> + Send;
+
     /// Search for users with search criteria in `UserSearch` from
     /// database storage.
     fn search_users(
         &self,
         user: &UserSearch,
     ) -> impl Future<Output = DatabaseResult<Vec<User>>> + Send;
+
     /// Count the number of users grouping by gender.
     fn count_genders(&self) -> impl Future<Output = Result<Vec<Value>, DatabaseError>> + Send;
+
     /// Download all users as a stream.
     fn download(
         &self,
-    ) -> impl Future<
-        Output = DatabaseResult<impl Stream<Item = DatabaseResult<User>> + 'static + Send>,
-    > + Send;
+    ) -> impl Future<Output = impl Stream<Item = DatabaseResult<User>> + 'static + Send> + '_ + Send;
 }
 
 /// Abstract our database API so it can be swapped out
@@ -43,32 +47,42 @@ pub trait UserDatabaseDynSafe: Send + Sync + Debug {
         &'a self,
         id: &'a UserKey,
     ) -> Pin<Box<dyn Future<Output = DatabaseResult<Option<User>>> + 'a + Send>>;
+
     /// Save a user to database storage.
     fn save_user<'a>(
         &'a self,
         user: &'a User,
     ) -> Pin<Box<dyn Future<Output = DatabaseResult<User>> + 'a + Send>>;
+
     /// Update a user in database storage.
     fn update_user<'a>(
         &'a self,
         user: &'a UpdateUser,
     ) -> Pin<Box<dyn Future<Output = DatabaseResult<()>> + 'a + Send>>;
+
     /// Remove a user from database storage.
     fn remove_user<'a>(
         &'a self,
         user: &'a UserKey,
     ) -> Pin<Box<dyn Future<Output = DatabaseResult<()>> + 'a + Send>>;
+
     /// Search for users with search criteria in `UserSearch` from
     /// database storage.
     fn search_users<'a>(
         &'a self,
         user: &'a UserSearch,
     ) -> Pin<Box<dyn Future<Output = DatabaseResult<Vec<User>>> + 'a + Send>>;
+
     /// Count the number of users grouping by gender.
     fn count_genders(
         &self,
-    ) -> Pin<Box<dyn Future<Output = Result<Vec<Value>, DatabaseError>> + '_ + Send>>;
+    ) -> Pin<Box<dyn Future<Output = DatabaseResult<Vec<Value>>> + '_ + Send>>;
+
+    /// Download all user records
+    fn download(&self) -> Pin<Box<dyn Future<Output = PinnedUserStream> + '_>>;
 }
+
+pub type PinnedUserStream = Pin<Box<dyn Stream<Item = DatabaseResult<User>> + 'static + Send>>;
 
 /// Database errors.
 #[derive(Error, Debug)]

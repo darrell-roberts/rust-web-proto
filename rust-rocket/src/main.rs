@@ -92,7 +92,7 @@ async fn main() {
                         routes::save_user,
                         routes::find_users,
                         routes::update_user,
-                        routes::download
+                        // routes::download
                     ],
                 )
                 .register(

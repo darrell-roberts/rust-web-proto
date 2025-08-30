@@ -1,13 +1,14 @@
-/*!
-This module provides data access to a a mongodb user collection.
-
-This implements a dyn safe trait. This is needed for actix-web and rocket that don't
-support generics in the route functions.
-*/
+//! This module provides data access to a a mongodb user collection.
+//!
+//! This implements a dyn safe trait. This is needed for actix-web and rocket that don't
+//! support generics in the route functions.
 use crate::{
-    database::{DatabaseError, DatabaseResult, UserDatabase, UserDatabaseDynSafe},
+    database::{
+        DatabaseError, DatabaseResult, PinnedUserStream, UserDatabase, UserDatabaseDynSafe,
+    },
     types::{UpdateUser, User, UserKey, UserSearch},
 };
+use futures::{FutureExt, StreamExt};
 use serde_json::Value;
 use std::{future::Future, pin::Pin};
 use tracing::instrument;
@@ -54,5 +55,9 @@ impl<T: UserDatabase> UserDatabaseDynSafe for T {
         &self,
     ) -> Pin<Box<dyn Future<Output = Result<Vec<Value>, DatabaseError>> + '_ + Send>> {
         Box::pin(UserDatabase::count_genders(self))
+    }
+
+    fn download(&self) -> Pin<Box<dyn Future<Output = PinnedUserStream> + '_>> {
+        Box::pin(UserDatabase::download(self).map(|stream| stream.boxed()))
     }
 }
