@@ -1,28 +1,13 @@
-#[macro_use]
-extern crate rocket;
-
-mod catchers;
-mod fairings;
-mod guards;
-mod routes;
-#[cfg(test)]
-mod tests;
-mod types;
-
-use crate::types::{JWTClaims, Role};
-use chrono::{Duration, Utc};
+//! Start the user service from cli.
 use clap::Parser;
-use hmac::{Hmac, Mac};
-use jwt::SignWithKey;
-use sha2::Sha256;
+use rust_rocket::{
+    test_jwt,
+    types::{self, Role},
+};
 use std::{fmt, process, sync::Arc};
-use tracing::{event, Level};
+use tracing::{error, event, Level};
 use tracing_subscriber::EnvFilter;
 use user_database::{database::UserDatabaseDynSafe, mongo_database::MongoDatabase, MongoArgs};
-
-// This would be sourced from some vault service.
-const TEST_JWT_SECRET: &[u8] = b"TEST_SECRET";
-const FRAMEWORK_TARGET: &str = "ms-framework";
 
 #[derive(Parser, Debug, Clone)]
 #[clap(about, version, author)]
@@ -35,19 +20,6 @@ impl fmt::Display for ProgramArgs {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "mongo_opts {}", self.mongo_opts)
     }
-}
-
-type HmacSha256 = Hmac<Sha256>;
-
-fn test_jwt(role: Role) -> String {
-    let key = HmacSha256::new_from_slice(TEST_JWT_SECRET).unwrap();
-    let expiration = Utc::now() + Duration::minutes(15);
-    let claims = JWTClaims {
-        sub: "somebody".to_owned(),
-        role,
-        exp: expiration.timestamp(),
-    };
-    format!("Bearer {}", claims.sign_with_key(&key).unwrap())
 }
 
 #[rocket::main]
@@ -78,36 +50,7 @@ async fn main() {
     match MongoDatabase::new(program_opts.mongo_opts).await {
         Ok(db) => {
             let mongo_database: Arc<dyn UserDatabaseDynSafe> = Arc::new(db);
-
-            let _ = rocket::build()
-                .attach(fairings::RequestIdFairing)
-                .attach(fairings::LoggerFairing)
-                .attach(fairings::RequestTimer)
-                .manage(mongo_database)
-                .mount(
-                    "/api/v1/user",
-                    routes![
-                        routes::count_genders,
-                        routes::download,
-                        routes::get_user,
-                        routes::save_user,
-                        routes::find_users,
-                        routes::update_user,
-                    ],
-                )
-                .register(
-                    "/api/v1/user",
-                    catchers![
-                        catchers::not_found,
-                        catchers::bad_request,
-                        catchers::unprocessable_entry,
-                        catchers::internal_server_error,
-                        catchers::not_authorized
-                    ],
-                )
-                .launch()
-                .await
-                .unwrap();
+            let _ = rust_rocket::rocket(mongo_database).launch().await.unwrap();
         }
         Err(e) => {
             error!("Failed to connect to database: {e}");
