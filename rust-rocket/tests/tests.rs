@@ -1,8 +1,4 @@
-use crate::{
-    catchers, fairings, routes,
-    types::{JWTClaims, Role},
-    TEST_JWT_SECRET,
-};
+//! Route integration tests.
 use chrono::{Duration, Utc};
 use hmac::{Hmac, Mac};
 use jwt::SignWithKey;
@@ -11,6 +7,10 @@ use rocket::{
     local::blocking::Client,
     Build, Rocket,
 };
+use rust_rocket::{
+    types::{JWTClaims, Role},
+    TEST_JWT_SECRET,
+};
 use serde_json::{json, Value};
 use sha2::Sha256;
 use std::sync::{Arc, Once};
@@ -18,39 +18,12 @@ use thiserror::Error;
 use tracing::{event, Level};
 use tracing_subscriber::EnvFilter;
 use user_database::{
-    database::{DatabaseResult, UserDatabase, UserDatabaseDynSafe},
+    database::{DatabaseResult, UserDatabase},
     types::{Email, Gender, UpdateUser, User, UserKey, UserSearch},
 };
 
-const USER_PATH: &str = "/api/v1/user";
-
 fn get_rocket() -> Rocket<Build> {
-    let mongo_pesist: Arc<dyn UserDatabaseDynSafe> = Arc::new(TestDatabase);
-    rocket::build()
-        .manage(mongo_pesist)
-        .attach(fairings::RequestIdFairing)
-        .attach(fairings::LoggerFairing)
-        .attach(fairings::RequestTimer)
-        .mount(
-            USER_PATH,
-            routes![
-                routes::count_genders,
-                routes::download,
-                routes::get_user,
-                routes::save_user,
-                routes::find_users,
-                routes::update_user,
-            ],
-        )
-        .register(
-            USER_PATH,
-            catchers![
-                catchers::not_found,
-                catchers::bad_request,
-                catchers::unprocessable_entry,
-                catchers::internal_server_error
-            ],
-        )
+    rust_rocket::rocket(Arc::new(TestDatabase))
 }
 
 const TEST_TARGET: &str = "test";
@@ -89,11 +62,7 @@ fn test_user() -> User {
 // A mock database for testing.
 impl UserDatabase for TestDatabase {
     async fn get_user(&self, id: &UserKey) -> DatabaseResult<Option<User>> {
-        if id.0 == "61c0d1954c6b974ca7000000" {
-            Ok(Some(test_user()))
-        } else {
-            Ok(None)
-        }
+        Ok((id.0 == "61c0d1954c6b974ca7000000").then(test_user))
     }
 
     async fn save_user(&self, user: &User) -> DatabaseResult<User> {

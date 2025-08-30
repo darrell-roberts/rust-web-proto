@@ -1,3 +1,4 @@
+//! Integration tests for actix-web handlers.
 use actix_http::header::TryIntoHeaderPair;
 use actix_service::Service;
 use actix_web::{
@@ -53,11 +54,7 @@ pub struct TestDatabase;
 // A mock database for testing.
 impl UserDatabase for TestDatabase {
     async fn get_user(&self, id: &UserKey) -> DatabaseResult<Option<User>> {
-        if id.0 == "61c0d1954c6b974ca7000000" {
-            Ok(Some(test_user()))
-        } else {
-            Ok(None)
-        }
+        Ok((id.0 == "61c0d1954c6b974ca7000000").then(test_user))
     }
 
     async fn save_user(&self, user: &User) -> DatabaseResult<User> {
