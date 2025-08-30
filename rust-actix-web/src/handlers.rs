@@ -1,7 +1,12 @@
 //! Router handler functions
 use crate::types::{AdminAccess, HandlerError, UserAccess};
 use actix_http::{ResponseBuilder, StatusCode};
-use actix_web::{get, post, put, web, Responder, Result};
+use actix_web::{
+    get, post, put,
+    web::{self, Bytes},
+    HttpResponse, HttpResponseBuilder, Responder, Result,
+};
+use futures::TryStreamExt;
 use std::sync::Arc;
 use tracing::debug;
 use user_database::{
@@ -66,4 +71,14 @@ pub async fn count_users(
     let counts = db.count_genders().await?;
     debug!("User counts: {counts:?}");
     Ok(web::Json(counts))
+}
+
+#[get("download")]
+pub async fn download_users(db: Database, _claims: AdminAccess) -> HttpResponse {
+    let stream = db
+        .download()
+        .await
+        .map_ok(|user| Bytes::from(serde_json::to_vec(&user).unwrap_or_default()));
+
+    HttpResponseBuilder::new(StatusCode::OK).streaming(stream)
 }

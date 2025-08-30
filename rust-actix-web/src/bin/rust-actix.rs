@@ -42,6 +42,7 @@ async fn main() -> Result<(), std::io::Error> {
                         web::scope("/api/v1/user")
                             .service(handlers::count_users)
                             .service(handlers::search_users)
+                            .service(handlers::download_users)
                             .service(handlers::get_user)
                             .service(handlers::save_user)
                             .service(handlers::update_user),

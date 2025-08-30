@@ -139,7 +139,7 @@ where
 
     let stream = db
         .download()
-        .await?
+        .await
         .filter_map(|r| async { r.ok() })
         .enumerate()
         .map(|(index, u)| {
