@@ -253,7 +253,7 @@ async fn test_download() {
     let body = res.into_body();
 
     pin!(body);
-    for i in 0..3 {
+    for i in 0..5 {
         let bytes = future::poll_fn(|cx| body.as_mut().poll_next(cx))
             .await
             .unwrap();

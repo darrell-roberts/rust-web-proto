@@ -11,10 +11,13 @@ use axum::{
     extract::{Json, Path},
     response::IntoResponse,
 };
-use futures::stream::{self, StreamExt};
+use futures::{
+    stream::{self, StreamExt},
+    TryStreamExt,
+};
 use http::{Response, StatusCode};
-use serde_json::{to_string, Value};
-use tracing::debug;
+use serde_json::Value;
+use tracing::{debug, error};
 use user_database::{
     database::UserDatabase,
     types::{UpdateUser, User, UserKey, UserSearch},
@@ -140,14 +143,11 @@ where
     let stream = db
         .download()
         .await
+        .inspect_err(|err| error!("Failed to read user record {err}"))
         .filter_map(|r| async { r.ok() })
         .enumerate()
         .map(|(index, u)| {
-            if index > 0 {
-                to_string(&u).map(|s| format!(",{s}"))
-            } else {
-                to_string(&u)
-            }
+            serde_json::to_string(&u).map(|s| if index > 0 { format!(",{s}") } else { s })
         });
 
     Ok(Response::builder()
