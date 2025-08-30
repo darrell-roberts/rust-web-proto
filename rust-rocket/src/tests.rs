@@ -35,11 +35,11 @@ fn get_rocket() -> Rocket<Build> {
             USER_PATH,
             routes![
                 routes::count_genders,
+                routes::download,
                 routes::get_user,
                 routes::save_user,
                 routes::find_users,
                 routes::update_user,
-                // routes::download
             ],
         )
         .register(
@@ -126,7 +126,29 @@ impl UserDatabase for TestDatabase {
     }
 
     async fn download(&self) -> impl futures::Stream<Item = DatabaseResult<User>> + 'static + Send {
-        futures::stream::iter([])
+        futures::stream::iter([
+            Ok(User {
+                id: Some(UserKey("key1".into())),
+                name: "Test User 1".into(),
+                age: 100,
+                email: Email("test1@test.com".into()),
+                gender: Gender::Male,
+            }),
+            Ok(User {
+                id: Some(UserKey("key2".into())),
+                name: "Test User 2".into(),
+                age: 100,
+                email: Email("test2@test.com".into()),
+                gender: Gender::Male,
+            }),
+            Ok(User {
+                id: Some(UserKey("key3".into())),
+                name: "Test User 3".into(),
+                age: 100,
+                email: Email("test3@test.com".into()),
+                gender: Gender::Male,
+            }),
+        ])
     }
 }
 
@@ -313,6 +335,26 @@ fn count_genders() -> TestResult<()> {
     let response = client
         .get("/api/v1/user/counts")
         .header(Header::new("Authorization", test_jwt(Role::User)))
+        .dispatch();
+
+    let status = response.status();
+    let body = response.into_string().unwrap_or_default();
+
+    event!(target: TEST_TARGET, Level::DEBUG, "body: {body}");
+
+    assert_eq!(status, Status::Ok);
+
+    Ok(())
+}
+
+#[test]
+fn test_download() -> TestResult<()> {
+    init_log();
+    let client = Client::tracked(get_rocket()).map_err(Box::new)?;
+
+    let response = client
+        .get("/api/v1/user/download")
+        .header(Header::new("Authorization", test_jwt(Role::Admin)))
         .dispatch();
 
     let status = response.status();

@@ -2,8 +2,9 @@ use crate::{
     fairings::RequestId,
     types::{AdminAccess, ErrorResponder, JsonValidation, UserAccess, UserKeyReq, USER_MS_TARGET},
 };
+use futures::StreamExt as _;
 use mongodb::bson::doc;
-use rocket::{serde::json::Json, State};
+use rocket::{response::stream::ByteStream, serde::json::Json, State};
 use serde_json::Value;
 use std::sync::Arc;
 use tracing::{event, Level};
@@ -87,28 +88,20 @@ pub async fn find_users(
     Ok(Json(result))
 }
 
-/*
 // Stream all users as json.
 #[get("/download")]
 pub async fn download(
     db: &UserDatabase,
-    req_id: RequestId,
+    _req_id: RequestId,
     _role: AdminAccess,
-) -> ByteStream![Vec<u8> + '_] {
-    let stream = db.download();
-
-    ByteStream! {
-        let stream = stream.await;
-        futures::pin_mut!(stream);
-        for await user in stream {
-          match user {
-            Ok(u) => yield serde_json::to_string(&u).unwrap_or_default().into_bytes(),
-            Err(e) => {
-              event!(target: USER_MS_TARGET, Level::ERROR, %req_id, "Failed to stream downloads: {e}");
-              break
-            },
-          }
+) -> ByteStream![Vec<u8>] {
+    let stream = db.download().await.map(|result| match result {
+        Ok(user) => serde_json::to_vec(&user).unwrap_or_default(),
+        Err(err) => {
+            error!("Failed to stream user: {err}");
+            Vec::new()
         }
-    }
+    });
+
+    ByteStream::from(stream)
 }
-*/

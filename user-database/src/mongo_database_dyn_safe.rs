@@ -57,7 +57,7 @@ impl<T: UserDatabase> UserDatabaseDynSafe for T {
         Box::pin(UserDatabase::count_genders(self))
     }
 
-    fn download(&self) -> Pin<Box<dyn Future<Output = PinnedUserStream> + '_>> {
+    fn download(&self) -> Pin<Box<dyn Future<Output = PinnedUserStream> + '_ + Send>> {
         Box::pin(UserDatabase::download(self).map(|stream| stream.boxed()))
     }
 }

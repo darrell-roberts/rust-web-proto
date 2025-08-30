@@ -88,11 +88,11 @@ async fn main() {
                     "/api/v1/user",
                     routes![
                         routes::count_genders,
+                        routes::download,
                         routes::get_user,
                         routes::save_user,
                         routes::find_users,
                         routes::update_user,
-                        // routes::download
                     ],
                 )
                 .register(

@@ -79,7 +79,7 @@ pub trait UserDatabaseDynSafe: Send + Sync + Debug {
     ) -> Pin<Box<dyn Future<Output = DatabaseResult<Vec<Value>>> + '_ + Send>>;
 
     /// Download all user records
-    fn download(&self) -> Pin<Box<dyn Future<Output = PinnedUserStream> + '_>>;
+    fn download(&self) -> Pin<Box<dyn Future<Output = PinnedUserStream> + '_ + Send>>;
 }
 
 pub type PinnedUserStream = Pin<Box<dyn Stream<Item = DatabaseResult<User>> + 'static + Send>>;
