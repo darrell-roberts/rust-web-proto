@@ -1,3 +1,4 @@
+//! Integration tests for actix-web handlers.
 use actix_http::header::TryIntoHeaderPair;
 use actix_service::Service;
 use actix_web::{
