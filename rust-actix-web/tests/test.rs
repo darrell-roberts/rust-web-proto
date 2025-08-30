@@ -1,14 +1,17 @@
 use actix_http::header::TryIntoHeaderPair;
 use actix_service::Service;
 use actix_web::{body::MessageBody, dev, http, test, web, App};
-use async_trait::async_trait;
 use rust_actix_web::{
     handlers,
     middleware::{create_test_jwt, JwtAuth},
     types::Role,
 };
 use serde_json::{json, Value};
-use std::sync::{Arc, Once};
+use std::{
+    future::Future,
+    pin::Pin,
+    sync::{Arc, Once},
+};
 use tracing_actix_web::TracingLogger;
 use tracing_subscriber::EnvFilter;
 use user_database::database::{DatabaseError, DatabaseResult, UserDatabaseDynSafe};
@@ -43,43 +46,63 @@ fn test_user() -> User {
 pub struct TestDatabase;
 
 // A mock database for testing.
-#[async_trait]
 impl UserDatabaseDynSafe for TestDatabase {
-    async fn get_user(&self, id: &UserKey) -> Result<Option<User>, DatabaseError> {
-        if id.0 == "61c0d1954c6b974ca7000000" {
-            Ok(Some(test_user()))
-        } else {
-            Ok(None)
-        }
+    fn get_user<'a>(
+        &'a self,
+        id: &'a UserKey,
+    ) -> Pin<Box<dyn Future<Output = DatabaseResult<Option<User>>> + 'a + Send>> {
+        Box::pin(async {
+            if id.0 == "61c0d1954c6b974ca7000000" {
+                Ok(Some(test_user()))
+            } else {
+                Ok(None)
+            }
+        })
     }
 
-    async fn save_user(&self, user: &User) -> Result<User, DatabaseError> {
-        Ok(user.clone())
+    fn save_user<'a>(
+        &'a self,
+        user: &'a User,
+    ) -> Pin<Box<dyn Future<Output = DatabaseResult<User>> + 'a + Send>> {
+        Box::pin(async { Ok(user.clone()) })
     }
 
-    async fn update_user(&self, _user: &UpdateUser) -> Result<(), DatabaseError> {
-        Ok(())
+    fn update_user<'a>(
+        &'a self,
+        _user: &'a UpdateUser,
+    ) -> Pin<Box<dyn Future<Output = DatabaseResult<()>> + 'a + Send>> {
+        Box::pin(async { Ok(()) })
     }
 
-    async fn remove_user(&self, _user: &UserKey) -> DatabaseResult<()> {
+    fn remove_user<'a>(
+        &'a self,
+        _user: &'a UserKey,
+    ) -> Pin<Box<dyn Future<Output = DatabaseResult<()>> + 'a + Send>> {
         todo!()
     }
 
-    async fn search_users(&self, _user_search: &UserSearch) -> Result<Vec<User>, DatabaseError> {
-        Ok(vec![test_user()])
+    fn search_users<'a>(
+        &'a self,
+        _user_search: &'a UserSearch,
+    ) -> Pin<Box<dyn Future<Output = DatabaseResult<Vec<User>>> + 'a + Send>> {
+        Box::pin(async { Ok(vec![test_user()]) })
     }
 
-    async fn count_genders(&self) -> Result<Vec<Value>, DatabaseError> {
-        Ok(vec![
-            json! (   {
-                "_id": "Male",
-                "count": 6
-            }),
-            json!({
-                "_id": "Female",
-                "count": 12
-            }),
-        ])
+    fn count_genders(
+        &self,
+    ) -> Pin<Box<dyn Future<Output = Result<Vec<Value>, DatabaseError>> + '_ + Send>> {
+        Box::pin(async {
+            Ok(vec![
+                json! (   {
+                    "_id": "Male",
+                    "count": 6
+                }),
+                json!({
+                    "_id": "Female",
+                    "count": 12
+                }),
+            ])
+        })
     }
 }
 
