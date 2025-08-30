@@ -12,7 +12,6 @@ name = "rust-actix"
 actix-http = "3"
 actix-service = "2"
 actix-web = { version = "4", features = ["openssl"] }
-async-trait = "0.1"
 chrono.workspace = true
 clap.workspace = true
 futures.workspace = true
