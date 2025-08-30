@@ -58,6 +58,6 @@ impl<T: UserDatabase> UserDatabaseDynSafe for T {
     }
 
     fn download(&self) -> Pin<Box<dyn Future<Output = PinnedUserStream> + '_ + Send>> {
-        Box::pin(UserDatabase::download(self).map(|stream| stream.boxed()))
+        Box::pin(UserDatabase::download(self).map(StreamExt::boxed))
     }
 }

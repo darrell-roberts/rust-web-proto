@@ -2,7 +2,7 @@ use crate::{
     fairings::RequestId,
     types::{AdminAccess, ErrorResponder, JsonValidation, UserAccess, UserKeyReq, USER_MS_TARGET},
 };
-use futures::StreamExt as _;
+use futures::{stream, StreamExt as _, TryStreamExt as _};
 use mongodb::bson::doc;
 use rocket::{response::stream::ByteStream, serde::json::Json, State};
 use serde_json::Value;
@@ -95,13 +95,21 @@ pub async fn download(
     _req_id: RequestId,
     _role: AdminAccess,
 ) -> ByteStream![Vec<u8>] {
-    let stream = db.download().await.map(|result| match result {
-        Ok(user) => serde_json::to_vec(&user).unwrap_or_default(),
-        Err(err) => {
-            error!("Failed to stream user: {err}");
-            Vec::new()
-        }
-    });
+    let header = stream::iter(std::iter::once(String::from("[").into_bytes()));
+    let footer = stream::iter(std::iter::once(String::from("]").into_bytes()));
 
-    ByteStream::from(stream)
+    let body = db
+        .download()
+        .await
+        .inspect_err(|err| error!("Failed to read user record {err}"))
+        .filter_map(|r| async { r.ok() })
+        .enumerate()
+        .filter_map(|(index, u)| async move {
+            serde_json::to_string(&u)
+                .map(|s| if index > 0 { format!(",{s}") } else { s })
+                .ok()
+        })
+        .map(|s| s.into_bytes());
+
+    ByteStream::from(header.chain(body).chain(footer))
 }

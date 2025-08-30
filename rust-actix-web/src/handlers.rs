@@ -6,7 +6,7 @@ use actix_web::{
     web::{self, Bytes},
     HttpResponse, HttpResponseBuilder, Responder, Result,
 };
-use futures::TryStreamExt;
+use futures::{stream, StreamExt as _, TryStreamExt};
 use std::sync::Arc;
 use tracing::debug;
 use user_database::{
@@ -75,10 +75,15 @@ pub async fn count_users(
 
 #[get("download")]
 pub async fn download_users(db: Database, _claims: AdminAccess) -> HttpResponse {
-    let stream = db
+    let header = stream::iter(std::iter::once(Ok(Bytes::from("["))));
+    let footer = stream::iter(std::iter::once(Ok(Bytes::from("]"))));
+
+    let body = db
         .download()
         .await
         .map_ok(|user| Bytes::from(serde_json::to_vec(&user).unwrap_or_default()));
 
-    HttpResponseBuilder::new(StatusCode::OK).streaming(stream)
+    HttpResponseBuilder::new(StatusCode::OK)
+        .append_header(("Content-Type", "application/json"))
+        .streaming(header.chain(body).chain(footer))
 }
