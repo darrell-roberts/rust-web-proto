@@ -13,16 +13,12 @@ use rocket::{
 };
 use serde_json::{json, Value};
 use sha2::Sha256;
-use std::{
-    future::Future,
-    pin::Pin,
-    sync::{Arc, Once},
-};
+use std::sync::{Arc, Once};
 use thiserror::Error;
 use tracing::{event, Level};
 use tracing_subscriber::EnvFilter;
 use user_database::{
-    database::{DatabaseError, DatabaseResult, UserDatabaseDynSafe},
+    database::{DatabaseResult, UserDatabase, UserDatabaseDynSafe},
     types::{Email, Gender, UpdateUser, User, UserKey, UserSearch},
 };
 
@@ -91,63 +87,48 @@ fn test_user() -> User {
 }
 
 // A mock database for testing.
-impl UserDatabaseDynSafe for TestDatabase {
-    fn get_user<'a>(
-        &'a self,
-        id: &'a UserKey,
-    ) -> Pin<Box<dyn Future<Output = DatabaseResult<Option<User>>> + 'a + Send>> {
-        Box::pin(async {
-            if id.0 == "61c0d1954c6b974ca7000000" {
-                Ok(Some(test_user()))
-            } else {
-                Ok(None)
-            }
-        })
+impl UserDatabase for TestDatabase {
+    async fn get_user(&self, id: &UserKey) -> DatabaseResult<Option<User>> {
+        if id.0 == "61c0d1954c6b974ca7000000" {
+            Ok(Some(test_user()))
+        } else {
+            Ok(None)
+        }
     }
 
-    fn save_user<'a>(
-        &'a self,
-        user: &'a User,
-    ) -> Pin<Box<dyn Future<Output = DatabaseResult<User>> + 'a + Send>> {
-        Box::pin(async { Ok(user.clone()) })
+    async fn save_user(&self, user: &User) -> DatabaseResult<User> {
+        Ok(user.clone())
     }
 
-    fn update_user<'a>(
-        &'a self,
-        _user: &'a UpdateUser,
-    ) -> Pin<Box<dyn Future<Output = DatabaseResult<()>> + 'a + Send>> {
-        Box::pin(async { Ok(()) })
+    async fn update_user(&self, _user: &UpdateUser) -> DatabaseResult<()> {
+        Ok(())
     }
 
-    fn remove_user<'a>(
-        &'a self,
-        _user: &'a UserKey,
-    ) -> Pin<Box<dyn Future<Output = DatabaseResult<()>> + 'a + Send>> {
+    async fn remove_user(&self, _user: &UserKey) -> DatabaseResult<()> {
         todo!()
     }
 
-    fn search_users<'a>(
-        &'a self,
-        _user_search: &'a UserSearch,
-    ) -> Pin<Box<dyn Future<Output = DatabaseResult<Vec<User>>> + 'a + Send>> {
-        Box::pin(async { Ok(vec![test_user()]) })
+    async fn search_users(&self, _user_search: &UserSearch) -> DatabaseResult<Vec<User>> {
+        Ok(vec![test_user()])
     }
 
-    fn count_genders(
+    async fn count_genders(&self) -> DatabaseResult<Vec<Value>> {
+        Ok(vec![
+            json! (   {
+                "_id": "Male",
+                "count": 6
+            }),
+            json!({
+                "_id": "Female",
+                "count": 12
+            }),
+        ])
+    }
+
+    async fn download(
         &self,
-    ) -> Pin<Box<dyn Future<Output = Result<Vec<Value>, DatabaseError>> + '_ + Send>> {
-        Box::pin(async {
-            Ok(vec![
-                json! (   {
-                    "_id": "Male",
-                    "count": 6
-                }),
-                json!({
-                    "_id": "Female",
-                    "count": 12
-                }),
-            ])
-        })
+    ) -> DatabaseResult<impl futures::Stream<Item = DatabaseResult<User>> + 'static + Send> {
+        Ok(futures::stream::iter([]))
     }
 }
 
