@@ -8,7 +8,7 @@ use actix_web::{
 };
 use futures::{stream, StreamExt as _, TryStreamExt};
 use std::sync::Arc;
-use tracing::debug;
+use tracing::{debug, error};
 use user_database::{
     database::UserDatabaseDynSafe,
     types::{UpdateUser, User, UserKey, UserSearch},
@@ -75,13 +75,20 @@ pub async fn count_users(
 
 #[get("download")]
 pub async fn download_users(db: Database, _claims: AdminAccess) -> HttpResponse {
-    let header = stream::iter(std::iter::once(Ok(Bytes::from("["))));
-    let footer = stream::iter(std::iter::once(Ok(Bytes::from("]"))));
+    let header = stream::iter(std::iter::once(Ok(Bytes::from_static(b"["))));
+    let footer = stream::iter(std::iter::once(Ok(Bytes::from_static(b"]"))));
 
     let body = db
         .download()
         .await
-        .map_ok(|user| Bytes::from(serde_json::to_vec(&user).unwrap_or_default()));
+        .inspect_err(|err| error!("Failed to read user record {err}"))
+        .filter_map(|r| async { r.ok() })
+        .enumerate()
+        .map(|(index, u)| {
+            serde_json::to_string(&u)
+                .map(|s| if index > 0 { format!(",{s}") } else { s })
+                .map(Bytes::from)
+        });
 
     HttpResponseBuilder::new(StatusCode::OK)
         .append_header(("Content-Type", "application/json"))

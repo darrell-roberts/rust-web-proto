@@ -46,41 +46,41 @@ pub trait UserDatabaseDynSafe: Send + Sync + Debug {
     fn get_user<'a>(
         &'a self,
         id: &'a UserKey,
-    ) -> Pin<Box<dyn Future<Output = DatabaseResult<Option<User>>> + 'a + Send>>;
+    ) -> PinBox<dyn Future<Output = DatabaseResult<Option<User>>> + 'a + Send>;
 
     /// Save a user to database storage.
     fn save_user<'a>(
         &'a self,
         user: &'a User,
-    ) -> Pin<Box<dyn Future<Output = DatabaseResult<User>> + 'a + Send>>;
+    ) -> PinBox<dyn Future<Output = DatabaseResult<User>> + 'a + Send>;
 
     /// Update a user in database storage.
     fn update_user<'a>(
         &'a self,
         user: &'a UpdateUser,
-    ) -> Pin<Box<dyn Future<Output = DatabaseResult<()>> + 'a + Send>>;
+    ) -> PinBox<dyn Future<Output = DatabaseResult<()>> + 'a + Send>;
 
     /// Remove a user from database storage.
     fn remove_user<'a>(
         &'a self,
         user: &'a UserKey,
-    ) -> Pin<Box<dyn Future<Output = DatabaseResult<()>> + 'a + Send>>;
+    ) -> PinBox<dyn Future<Output = DatabaseResult<()>> + 'a + Send>;
 
     /// Search for users with search criteria in `UserSearch` from
     /// database storage.
     fn search_users<'a>(
         &'a self,
         user: &'a UserSearch,
-    ) -> Pin<Box<dyn Future<Output = DatabaseResult<Vec<User>>> + 'a + Send>>;
+    ) -> PinBox<dyn Future<Output = DatabaseResult<Vec<User>>> + 'a + Send>;
 
     /// Count the number of users grouping by gender.
-    fn count_genders(
-        &self,
-    ) -> Pin<Box<dyn Future<Output = DatabaseResult<Vec<Value>>> + '_ + Send>>;
+    fn count_genders(&self) -> PinBox<dyn Future<Output = DatabaseResult<Vec<Value>>> + '_ + Send>;
 
     /// Download all user records
-    fn download(&self) -> Pin<Box<dyn Future<Output = PinnedUserStream> + '_ + Send>>;
+    fn download(&self) -> PinBox<dyn Future<Output = PinnedUserStream> + '_ + Send>;
 }
+
+pub type PinBox<T> = Pin<Box<T>>;
 
 pub type PinnedUserStream = Pin<Box<dyn Stream<Item = DatabaseResult<User>> + 'static + Send>>;
 

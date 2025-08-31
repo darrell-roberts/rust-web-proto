@@ -1,12 +1,18 @@
 //! Handlers.
 use crate::types::WarpDatabaseError;
+use futures::{stream, StreamExt as _, TryStreamExt as _};
 use std::sync::Arc;
-use tracing::{debug, instrument};
+use tracing::{debug, error, instrument};
 use user_database::{
     database::{DatabaseError, UserDatabase},
     types::{User, UserKey, UserSearch},
 };
-use warp::{http::StatusCode, reply, Rejection, Reply};
+use warp::{
+    http::StatusCode,
+    reject::reject,
+    reply::{self},
+    Rejection, Reply,
+};
 
 fn to_warp_error(err: DatabaseError) -> WarpDatabaseError {
     WarpDatabaseError(err.to_string())
@@ -51,4 +57,31 @@ where
     debug!("counting users");
     let counts = db.count_genders().await.map_err(to_warp_error)?;
     Ok(reply::json(&counts))
+}
+
+pub async fn download_users<P>(db: Arc<P>) -> Result<impl Reply, Rejection>
+where
+    P: UserDatabase,
+{
+    let header = stream::iter(std::iter::once(String::from("[").into_bytes()));
+    let footer = stream::iter(std::iter::once(String::from("]").into_bytes()));
+
+    let body = db
+        .download()
+        .await
+        .inspect_err(|err| error!("Failed to read user record {err}"))
+        .filter_map(|r| async { r.ok() })
+        .enumerate()
+        .filter_map(|(index, u)| async move {
+            serde_json::to_string(&u)
+                .map(|s| if index > 0 { format!(",{s}") } else { s })
+                .ok()
+        })
+        .map(|s| s.into_bytes());
+
+    let _stream = header.chain(body).chain(footer);
+
+    // Warp does not support streaming body anymore :-(
+    // https://github.com/seanmonstar/warp/issues/1136
+    Err::<&'static str, _>(reject())
 }

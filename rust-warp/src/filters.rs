@@ -49,10 +49,11 @@ where
         .and(warp::path("user"));
 
     let routes = base_path.and(
-        get_user(db.clone())
+        count_genders(db.clone())
             .or(search_users(db.clone()))
-            .or(save_user(db.clone()))
-            .or(count_genders(db)),
+            .or(download_users(db.clone()))
+            .or(get_user(db.clone()))
+            .or(save_user(db)),
     );
 
     routes
@@ -130,4 +131,15 @@ where
     warp::path("counts")
         .and(with_db(db))
         .and_then(handlers::handle_count_genders)
+}
+
+pub fn download_users<P>(
+    db: Database<P>,
+) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone
+where
+    P: UserDatabase,
+{
+    warp::path("download")
+        .and(with_db(db))
+        .and_then(handlers::download_users)
 }
