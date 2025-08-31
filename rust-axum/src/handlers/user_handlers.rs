@@ -7,7 +7,7 @@ use crate::{
     },
 };
 use axum::{
-    body::Body,
+    body::{Body, Bytes},
     extract::{Json, Path},
     response::IntoResponse,
 };
@@ -137,22 +137,24 @@ where
     // Chain my stream with a header and footer
     // in order to reconstitute a json array for
     // the mongodb stream of documents returned.
-    let header = stream::iter(vec![Ok("[".to_string())]);
-    let footer = stream::iter(vec![Ok("]".to_string())]);
+    let header = stream::iter(vec![Ok(Bytes::from_static(b"["))]);
+    let footer = stream::iter(vec![Ok(Bytes::from_static(b"]"))]);
 
-    let stream = db
+    let body = db
         .download()
         .await
         .inspect_err(|err| error!("Failed to read user record {err}"))
         .filter_map(|r| async { r.ok() })
         .enumerate()
         .map(|(index, u)| {
-            serde_json::to_string(&u).map(|s| if index > 0 { format!(",{s}") } else { s })
+            serde_json::to_string(&u)
+                .map(|s| if index > 0 { format!(",{s}") } else { s })
+                .map(Bytes::from)
         });
 
     Ok(Response::builder()
         .status(StatusCode::OK)
         .header("Content-Type", "application/json")
-        .body(Body::from_stream(header.chain(stream).chain(footer)))
+        .body(Body::from_stream(header.chain(body).chain(footer)))
         .unwrap())
 }

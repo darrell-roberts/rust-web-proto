@@ -265,7 +265,6 @@ async fn test_download() {
 
 async fn dump_body(body: impl MessageBody, uri: &str) {
     pin!(body);
-
     let bytes = body::to_bytes(body).await;
 
     match bytes {

@@ -142,7 +142,7 @@ impl UserDatabase for MongoDatabase {
             Ok(c) => c.map_ok(User::from).map_err(Into::into).left_stream(),
             Err(err) => {
                 error!("Failed to get cursor for download {err}");
-                futures::stream::iter([]).right_stream()
+                futures::stream::empty().right_stream()
             }
         }
     }

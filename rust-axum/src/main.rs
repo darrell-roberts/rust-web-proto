@@ -30,7 +30,6 @@ async fn main() -> Result<(), Box<dyn Error>> {
     .await?;
 
     let database = Arc::new(MongoDatabase::new(program_opts.mongo_opts()).await?);
-
     let app = build_app(database.clone(), app_config).layer(Extension(database));
 
     let addr = SocketAddr::from(([0, 0, 0, 0], 8443));
