@@ -118,25 +118,25 @@ impl<S> JwtMiddleware<S> {
     /// the Bearer <Token> header value.
     fn extract_jwt(&self, req: &ServiceRequest) -> Result<JWTClaims, JWTError> {
         match req
-      .headers()
-      .get("Authorization")
-      .map(|s| s.to_str().unwrap_or(""))
-      .map(|s| &s[7..]) // Drop "Bearer "
-    {
-      Some(jwt_token) => {
-        debug!(
-          "{} {} jwt_token: {jwt_token}",
-          req.method(),
-          req.uri()
-        );
+            .headers()
+            .get("Authorization")
+            .map(|s| s.to_str().unwrap_or(""))
+            .map(|s| &s[7..]) // Drop "Bearer "
+        {
+            Some(jwt_token) => {
+                debug!(
+                    "{} {} jwt_token: {jwt_token}",
+                    req.method(),
+                    req.uri()
+                );
 
-        let key = HmacSha256::new_from_slice(&self.inner.secret)?;
-        let claims: JWTClaims = jwt_token.verify_with_key(&key)?;
+                let key = HmacSha256::new_from_slice(&self.inner.secret)?;
+                let claims: JWTClaims = jwt_token.verify_with_key(&key)?;
 
-        Ok(claims.check_expired()?)
-      }
-      None => Err(JWTError::NoAutorizationHeader),
-    }
+                Ok(claims.check_expired()?)
+            }
+            None => Err(JWTError::NoAutorizationHeader),
+        }
     }
 }
 
