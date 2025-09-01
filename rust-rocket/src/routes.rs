@@ -6,7 +6,7 @@ use futures::{stream, StreamExt as _, TryStreamExt as _};
 use mongodb::bson::doc;
 use rocket::{response::stream::ByteStream, serde::json::Json, State};
 use serde_json::Value;
-use std::sync::Arc;
+use std::{future, sync::Arc};
 use tracing::{event, Level};
 use user_database::{
     database::UserDatabaseDynSafe,
@@ -102,14 +102,19 @@ pub async fn download(
         .download()
         .await
         .inspect_err(|err| error!("Failed to read user record {err}"))
-        .filter_map(|r| async { r.ok() })
+        .filter_map(|r| future::ready(r.ok()))
         .enumerate()
         .filter_map(|(index, u)| async move {
-            serde_json::to_string(&u)
-                .map(|s| if index > 0 { format!(",{s}") } else { s })
+            serde_json::to_vec(&u)
+                .map(|bytes| {
+                    if index > 0 {
+                        Vec::from_iter([b','].into_iter().chain(bytes))
+                    } else {
+                        bytes
+                    }
+                })
                 .ok()
-        })
-        .map(|s| s.into_bytes());
+        });
 
     ByteStream::from(header.chain(body).chain(footer))
 }

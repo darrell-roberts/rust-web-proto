@@ -18,6 +18,8 @@ pub enum HandlerError {
     DatabaseError(#[from] DatabaseError),
     #[error("Resource not found")]
     ResourceNotFound,
+    #[error("Http response error: {0}")]
+    Http(#[from] http::Error),
 }
 
 impl IntoResponse for HandlerError {

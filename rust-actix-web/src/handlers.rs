@@ -7,7 +7,7 @@ use actix_web::{
     HttpResponse, HttpResponseBuilder, Responder, Result,
 };
 use futures::{stream, StreamExt as _, TryStreamExt};
-use std::sync::Arc;
+use std::{future, sync::Arc};
 use tracing::{debug, error};
 use user_database::{
     database::UserDatabaseDynSafe,
@@ -82,11 +82,17 @@ pub async fn download_users(db: Database, _claims: AdminAccess) -> HttpResponse 
         .download()
         .await
         .inspect_err(|err| error!("Failed to read user record {err}"))
-        .filter_map(|r| async { r.ok() })
+        .filter_map(|r| future::ready(r.ok()))
         .enumerate()
         .map(|(index, u)| {
-            serde_json::to_string(&u)
-                .map(|s| if index > 0 { format!(",{s}") } else { s })
+            serde_json::to_vec(&u)
+                .map(|bytes| {
+                    if index > 0 {
+                        Vec::from_iter([b','].into_iter().chain(bytes))
+                    } else {
+                        bytes
+                    }
+                })
                 .map(Bytes::from)
         });
 

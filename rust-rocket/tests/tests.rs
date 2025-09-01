@@ -332,6 +332,10 @@ fn test_download() -> TestResult<()> {
     event!(target: TEST_TARGET, Level::DEBUG, "body: {body}");
 
     assert_eq!(status, Status::Ok);
+    assert_eq!(
+        body,
+        r#"[{"id":"key1","name":"Test User 1","age":100,"email":"test1@test.com","gender":"Male"},{"id":"key2","name":"Test User 2","age":100,"email":"test2@test.com","gender":"Male"},{"id":"key3","name":"Test User 3","age":100,"email":"test3@test.com","gender":"Male"}]"#
+    );
 
     Ok(())
 }
