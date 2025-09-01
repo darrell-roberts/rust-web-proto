@@ -1,6 +1,4 @@
 //! Route handles for the user API.
-use std::future;
-
 use crate::{
     extractors::{hashing::HashedValidatingJson, validator::ValidatingJson},
     types::{
@@ -19,6 +17,7 @@ use futures::{
 };
 use http::{Response, StatusCode};
 use serde_json::Value;
+use std::future;
 use tracing::{debug, error};
 use user_database::{
     database::UserDatabase,
@@ -38,13 +37,11 @@ where
     P: UserDatabase,
 {
     debug!("Received id: {id} with claims: {claims}");
-    let user = db
-        .get_user(&id)
+    db.get_user(&id)
         .await
         .map_err(HandlerError::from)?
-        .ok_or(HandlerError::ResourceNotFound)?;
-    debug!("db result: {user}");
-    Ok(Json(user))
+        .map(Json)
+        .ok_or(HandlerError::ResourceNotFound)
 }
 
 /// Save user handler.
@@ -58,8 +55,7 @@ where
     P: UserDatabase,
 {
     debug!("saving user: {user}");
-    let user = db.save_user(&user).await.map_err(HandlerError::from)?;
-    Ok(Json(user))
+    db.save_user(&user).await.map(Json).map_err(Into::into)
 }
 
 /// Update user handler.
@@ -75,7 +71,7 @@ where
     db.update_user(&user)
         .await
         .map(|_| StatusCode::OK)
-        .map_err(HandlerError::from)
+        .map_err(Into::into)
 }
 
 /// Search users handler.
@@ -88,11 +84,10 @@ where
     P: UserDatabase,
 {
     debug!("Searching for users with {user_search} and claims {claims}");
-    let users = db
-        .search_users(&user_search)
+    db.search_users(&user_search)
         .await
-        .map_err(HandlerError::from)?;
-    Ok(Json(users))
+        .map(Json)
+        .map_err(Into::into)
 }
 
 /// Delete user handler.
@@ -115,9 +110,7 @@ where
     P: UserDatabase,
 {
     debug!("Claims: {claims}");
-    let counts = db.count_genders().await?;
-    debug!("User counts: {counts:?}");
-    Ok(Json(counts))
+    db.count_genders().await.map(Json).map_err(Into::into)
 }
 
 // This gets a stream of MongoUser types that are
