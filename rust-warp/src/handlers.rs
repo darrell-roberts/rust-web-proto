@@ -1,14 +1,14 @@
 //! Handlers.
 use crate::types::WarpDatabaseError;
 use futures::{stream, StreamExt as _, TryStreamExt as _};
-use std::sync::Arc;
+use std::{future, sync::Arc};
 use tracing::{debug, error, instrument};
 use user_database::{
     database::{DatabaseError, UserDatabase},
     types::{User, UserKey, UserSearch},
 };
 use warp::{
-    http::StatusCode,
+    http::{self, StatusCode},
     reject::reject,
     reply::{self},
     Rejection, Reply,
@@ -63,25 +63,35 @@ pub async fn download_users<P>(db: Arc<P>) -> Result<impl Reply, Rejection>
 where
     P: UserDatabase,
 {
-    let header = stream::iter(std::iter::once(String::from("[").into_bytes()));
-    let footer = stream::iter(std::iter::once(String::from("]").into_bytes()));
+    let header = stream::iter(std::iter::once(vec![b'[']));
+    let footer = stream::iter(std::iter::once(vec![b']']));
 
     let body = db
         .download()
         .await
         .inspect_err(|err| error!("Failed to read user record {err}"))
-        .filter_map(|r| async { r.ok() })
+        .filter_map(|r| future::ready(r.ok()))
         .enumerate()
         .filter_map(|(index, u)| async move {
-            serde_json::to_string(&u)
-                .map(|s| if index > 0 { format!(",{s}") } else { s })
+            serde_json::to_vec(&u)
+                .map(|bytes| {
+                    if index > 0 {
+                        Vec::from_iter([b','].into_iter().chain(bytes))
+                    } else {
+                        bytes
+                    }
+                })
                 .ok()
-        })
-        .map(|s| s.into_bytes());
+        });
 
-    let _stream = header.chain(body).chain(footer);
+    let _response = http::Response::builder()
+        .status(StatusCode::OK)
+        .header("Content-Type", "application/json")
+        .body(header.chain(body).chain(footer).boxed())
+        .unwrap();
 
+    // Ok(response)
     // Warp does not support streaming body anymore :-(
     // https://github.com/seanmonstar/warp/issues/1136
-    Err::<&'static str, _>(reject())
+    Err::<String, _>(reject())
 }

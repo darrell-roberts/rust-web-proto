@@ -10,9 +10,8 @@ use std::{
 };
 use tracing::debug;
 use tracing_subscriber::EnvFilter;
-use user_database::database::DatabaseResult;
 use user_database::{
-    database::{DatabaseError, UserDatabase},
+    database::{DatabaseError, DatabaseResult, UserDatabase},
     types::{Email, Gender, UpdateUser, User, UserKey, UserSearch},
 };
 use warp::{hyper::body::Bytes, Filter, Reply};
@@ -101,8 +100,7 @@ impl UserDatabase for TestDatabase {
 
 fn test_user_filter() -> impl Filter<Extract = impl Reply, Error = Infallible> + Clone {
     init_log();
-    let test_db = Arc::new(TestDatabase);
-    user(test_db)
+    user(Arc::new(TestDatabase))
 }
 
 fn decompress_body(b: Bytes) -> String {
