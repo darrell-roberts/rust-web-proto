@@ -1,4 +1,6 @@
 //! Route handles for the user API.
+use std::future;
+
 use crate::{
     extractors::{hashing::HashedValidatingJson, validator::ValidatingJson},
     types::{
@@ -144,17 +146,23 @@ where
         .download()
         .await
         .inspect_err(|err| error!("Failed to read user record {err}"))
-        .filter_map(|r| async { r.ok() })
+        .filter_map(|r| future::ready(r.ok()))
         .enumerate()
         .map(|(index, u)| {
-            serde_json::to_string(&u)
-                .map(|s| if index > 0 { format!(",{s}") } else { s })
+            serde_json::to_vec(&u)
+                .map(|bytes| {
+                    if index > 0 {
+                        Vec::from_iter([b','].into_iter().chain(bytes))
+                    } else {
+                        bytes
+                    }
+                })
                 .map(Bytes::from)
         });
 
-    Ok(Response::builder()
+    Response::builder()
         .status(StatusCode::OK)
         .header("Content-Type", "application/json")
         .body(Body::from_stream(header.chain(body).chain(footer)))
-        .unwrap())
+        .map_err(HandlerError::from)
 }
