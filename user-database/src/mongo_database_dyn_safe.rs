@@ -4,60 +4,46 @@
 //! support generics in the route functions.
 use crate::{
     database::{
-        DatabaseError, DatabaseResult, PinBox, PinnedUserStream, UserDatabase, UserDatabaseDynSafe,
+        DatabaseError, DatabaseResult, PinBoxFuture, PinBoxStream, UserDatabase,
+        UserDatabaseDynSafe,
     },
     types::{UpdateUser, User, UserKey, UserSearch},
 };
 use futures::{FutureExt, StreamExt};
 use serde_json::Value;
-use std::future::Future;
 use tracing::instrument;
 
 // For all types that implement the non dyn safe we proxy and wrap in a dyn safe implementation.
 impl<T: UserDatabase> UserDatabaseDynSafe for T {
-    fn get_user<'a>(
-        &'a self,
-        id: &'a UserKey,
-    ) -> PinBox<dyn Future<Output = DatabaseResult<Option<User>>> + 'a + Send> {
-        Box::pin(UserDatabase::get_user(self, id))
+    fn get_user<'a>(&'a self, id: &'a UserKey) -> PinBoxFuture<'a, DatabaseResult<Option<User>>> {
+        Box::pin(T::get_user(self, id))
     }
 
-    fn save_user<'a>(
-        &'a self,
-        user: &'a User,
-    ) -> PinBox<dyn Future<Output = DatabaseResult<User>> + 'a + Send> {
-        Box::pin(UserDatabase::save_user(self, user))
+    fn save_user<'a>(&'a self, user: &'a User) -> PinBoxFuture<'a, DatabaseResult<User>> {
+        Box::pin(T::save_user(self, user))
     }
 
-    fn update_user<'a>(
-        &'a self,
-        user: &'a UpdateUser,
-    ) -> PinBox<dyn Future<Output = DatabaseResult<()>> + 'a + Send> {
-        Box::pin(UserDatabase::update_user(self, user))
+    fn update_user<'a>(&'a self, user: &'a UpdateUser) -> PinBoxFuture<'a, DatabaseResult<()>> {
+        Box::pin(T::update_user(self, user))
     }
 
-    fn remove_user<'a>(
-        &'a self,
-        key: &'a UserKey,
-    ) -> PinBox<dyn Future<Output = DatabaseResult<()>> + 'a + Send> {
-        Box::pin(UserDatabase::remove_user(self, key))
+    fn remove_user<'a>(&'a self, key: &'a UserKey) -> PinBoxFuture<'a, DatabaseResult<()>> {
+        Box::pin(T::remove_user(self, key))
     }
 
     #[instrument(skip_all, level = "debug", target = "database", name = "search-span")]
     fn search_users<'a>(
         &'a self,
         user_search: &'a UserSearch,
-    ) -> PinBox<dyn Future<Output = DatabaseResult<Vec<User>>> + 'a + Send> {
-        Box::pin(UserDatabase::search_users(self, user_search))
+    ) -> PinBoxFuture<'a, DatabaseResult<Vec<User>>> {
+        Box::pin(T::search_users(self, user_search))
     }
 
-    fn count_genders(
-        &self,
-    ) -> PinBox<dyn Future<Output = Result<Vec<Value>, DatabaseError>> + '_ + Send> {
-        Box::pin(UserDatabase::count_genders(self))
+    fn count_genders(&self) -> PinBoxFuture<'_, Result<Vec<Value>, DatabaseError>> {
+        Box::pin(T::count_genders(self))
     }
 
-    fn download(&self) -> PinBox<dyn Future<Output = PinnedUserStream> + '_ + Send> {
-        Box::pin(UserDatabase::download(self).map(StreamExt::boxed))
+    fn download(&self) -> PinBoxFuture<'_, PinBoxStream<DatabaseResult<User>>> {
+        Box::pin(T::download(self).map(StreamExt::boxed))
     }
 }
