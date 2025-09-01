@@ -43,46 +43,39 @@ pub trait UserDatabase: Send + Sync + Debug {
 /// for any backend.
 pub trait UserDatabaseDynSafe: Send + Sync + Debug {
     /// Lookup a user from database storage.
-    fn get_user<'a>(
-        &'a self,
-        id: &'a UserKey,
-    ) -> PinBox<dyn Future<Output = DatabaseResult<Option<User>>> + 'a + Send>;
+    fn get_user<'a>(&'a self, id: &'a UserKey) -> PinBoxFuture<'a, DatabaseResult<Option<User>>>;
 
     /// Save a user to database storage.
-    fn save_user<'a>(
-        &'a self,
-        user: &'a User,
-    ) -> PinBox<dyn Future<Output = DatabaseResult<User>> + 'a + Send>;
+    fn save_user<'a>(&'a self, user: &'a User) -> PinBoxFuture<'a, DatabaseResult<User>>;
 
     /// Update a user in database storage.
-    fn update_user<'a>(
-        &'a self,
-        user: &'a UpdateUser,
-    ) -> PinBox<dyn Future<Output = DatabaseResult<()>> + 'a + Send>;
+    fn update_user<'a>(&'a self, user: &'a UpdateUser) -> PinBoxFuture<'a, DatabaseResult<()>>;
 
     /// Remove a user from database storage.
-    fn remove_user<'a>(
-        &'a self,
-        user: &'a UserKey,
-    ) -> PinBox<dyn Future<Output = DatabaseResult<()>> + 'a + Send>;
+    fn remove_user<'a>(&'a self, user: &'a UserKey) -> PinBoxFuture<'a, DatabaseResult<()>>;
 
     /// Search for users with search criteria in `UserSearch` from
     /// database storage.
     fn search_users<'a>(
         &'a self,
         user: &'a UserSearch,
-    ) -> PinBox<dyn Future<Output = DatabaseResult<Vec<User>>> + 'a + Send>;
+    ) -> PinBoxFuture<'a, DatabaseResult<Vec<User>>>;
 
     /// Count the number of users grouping by gender.
-    fn count_genders(&self) -> PinBox<dyn Future<Output = DatabaseResult<Vec<Value>>> + '_ + Send>;
+    fn count_genders(&self) -> PinBoxFuture<'_, DatabaseResult<Vec<Value>>>;
 
     /// Download all user records
-    fn download(&self) -> PinBox<dyn Future<Output = PinnedUserStream> + '_ + Send>;
+    fn download(&self) -> PinBoxFuture<'_, PinBoxStream<DatabaseResult<User>>>;
 }
 
+/// A pinned box type.
 pub type PinBox<T> = Pin<Box<T>>;
 
-pub type PinnedUserStream = Pin<Box<dyn Stream<Item = DatabaseResult<User>> + 'static + Send>>;
+/// A dynamic dispatch safe future that yields `T`.
+pub type PinBoxFuture<'a, T> = PinBox<dyn Future<Output = T> + 'a + Send>;
+
+/// A pinned box dynamic dispatch stream that yields a `DatabaseResult<User>`.
+pub type PinBoxStream<T> = PinBox<dyn Stream<Item = T> + 'static + Send>;
 
 /// Database errors.
 #[derive(Error, Debug)]
